@@ -5,8 +5,5 @@ dist/
 .env
 .env.local
 .env.*.local
-.env.vercel.local
-vercel-import.env
-vercel.env
 .vercel/
 .vercel

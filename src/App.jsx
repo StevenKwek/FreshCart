@@ -1649,6 +1649,10 @@ function App() {
               <div className="admin-order-list">
                 {adminOrders.map((order) => {
                   const statusMeta = getOrderStatusMeta(order.status);
+                  const visibleOrderActions =
+                    order.status === 'completed'
+                      ? ['completed']
+                      : orderStatusOptions;
 
                   return (
                     <article key={order.id} className="admin-order-item">
@@ -1673,7 +1677,7 @@ function App() {
                       </div>
 
                       <div className="admin-order-actions">
-                        {orderStatusOptions.map((status) => (
+                        {visibleOrderActions.map((status) => (
                           <button
                             key={`${order.id}-${status}`}
                             className={`status-action-button ${
