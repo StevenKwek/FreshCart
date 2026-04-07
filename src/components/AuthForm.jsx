@@ -15,7 +15,6 @@ function AuthForm({ mode, onSwitchMode, onSubmit }) {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [allowManualEntry, setAllowManualEntry] = useState(false);
 
   const isRegister = mode === 'register';
   const isForgotPassword = mode === 'forgot';
@@ -31,7 +30,6 @@ function AuthForm({ mode, onSwitchMode, onSubmit }) {
     setError('');
     setSuccessMessage('');
     setShowPassword(false);
-    setAllowManualEntry(false);
   }, [mode]);
 
   const validateField = (fieldName, formValue = form) => {
@@ -281,10 +279,8 @@ function AuthForm({ mode, onSwitchMode, onSubmit }) {
               value={form.name}
               onChange={handleChange}
               onBlur={handleBlur}
-              onFocus={() => setAllowManualEntry(true)}
               placeholder="Enter your full name"
               autoComplete="off"
-              readOnly={!allowManualEntry}
             />
             {fieldErrors.name ? (
               <span className="field-feedback error">{fieldErrors.name}</span>
@@ -301,12 +297,10 @@ function AuthForm({ mode, onSwitchMode, onSubmit }) {
               value={form.username}
               onChange={handleChange}
               onBlur={handleBlur}
-              onFocus={() => setAllowManualEntry(true)}
               placeholder={
                 isRegister ? 'Choose a username' : 'Enter your username or email'
               }
               autoComplete="off"
-              readOnly={!allowManualEntry}
             />
             {isRegister ? (
               <span className="field-hint">
@@ -328,11 +322,9 @@ function AuthForm({ mode, onSwitchMode, onSubmit }) {
               value={form.email}
               onChange={handleChange}
               onBlur={handleBlur}
-              onFocus={() => setAllowManualEntry(true)}
               placeholder="Enter your email"
               autoComplete="off"
               inputMode="email"
-              readOnly={!allowManualEntry}
             />
             {fieldErrors.email ? (
               <span className="field-feedback error">{fieldErrors.email}</span>
@@ -350,10 +342,8 @@ function AuthForm({ mode, onSwitchMode, onSubmit }) {
                 value={form.password}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                onFocus={() => setAllowManualEntry(true)}
                 placeholder="Enter your password"
                 autoComplete="new-password"
-                readOnly={!allowManualEntry}
               />
               <button
                 className="password-toggle"
@@ -395,10 +385,8 @@ function AuthForm({ mode, onSwitchMode, onSubmit }) {
               value={form.confirmPassword}
               onChange={handleChange}
               onBlur={handleBlur}
-              onFocus={() => setAllowManualEntry(true)}
               placeholder="Repeat your password"
               autoComplete="new-password"
-              readOnly={!allowManualEntry}
             />
             {fieldErrors.confirmPassword ? (
               <span className="field-feedback error">
