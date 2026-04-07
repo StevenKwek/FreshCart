@@ -114,15 +114,6 @@ FreshCart/
 - Authentication masih berupa simple logic / dummy flow
 - Data disimpan di browser melalui `localStorage`
 
-## Ide Pengembangan Selanjutnya
-
-- Integrasi backend atau database seperti Firebase / Supabase
-- Sistem autentikasi nyata
-- Riwayat pesanan
-- Banner promo dan rekomendasi produk
-- Upload gambar lokal untuk katalog
-- Deployment ke Vercel atau Netlify
-
 ## Author
 
 Dibuat oleh Steven Kwek untuk portfolio frontend project.
