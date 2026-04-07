@@ -1,40 +1,37 @@
 # FreshCart
 
-FreshCart adalah aplikasi web Smart Grocery berbasis React yang dibuat untuk menampilkan kemampuan dasar frontend seperti membangun UI modern, mengelola state dengan React Hooks, membuat komponen reusable, dan menangani alur belanja sederhana tanpa backend.
+FreshCart adalah aplikasi web grocery berbasis React yang berjalan sepenuhnya secara lokal. Aplikasi ini menampilkan alur belanja sederhana mulai dari login, melihat produk, menyimpan wishlist, mengatur cart, hingga checkout dengan penyimpanan data di `localStorage`.
 
-Project ini cocok dijadikan portfolio frontend pemula karena mencakup flow yang cukup lengkap: landing page, authentication UI, katalog produk, detail produk, wishlist, cart, checkout, profile, dark mode, dan penyimpanan data sederhana dengan `localStorage`.
-
-## Preview
+## Ringkasan
 
 - Nama project: `FreshCart`
-- Tipe project: Frontend-only web app
-- Target user: pekerja sibuk, keluarga, dan mahasiswa
-- Tema visual: modern, clean, minimalis dengan dominasi hijau, putih, dan abu-abu muda
+- Tipe project: frontend-only web app
+- Penyimpanan data: `localStorage`
+- Tujuan penggunaan: simulasi belanja grocery untuk penggunaan lokal
 
-## Fitur Utama
+## Fitur
 
-- Landing page dengan value utama: belanja mudah, hemat waktu, dan rekomendasi pintar
+- Landing page dengan tampilan grocery app modern
 - Login, register, dan forgot password dengan validasi sederhana
-- Home page dengan product grid, search, dan filter kategori
-- Product detail dengan status stok dan tombol `Add to Cart`
-- Cart dengan update quantity `+ / -`
+- Katalog produk dengan pencarian dan filter kategori
+- Detail produk dengan informasi stok
 - Wishlist untuk menyimpan produk favorit
+- Cart dengan pengaturan jumlah produk
 - Checkout sederhana dengan pilihan metode pembayaran Indonesia
-- Profile page dengan ringkasan akun dan total belanja aktif
+- Profile page dengan ringkasan akun
 - Toast notification untuk aksi penting
 - Dark mode
 - Responsive layout untuk mobile, tablet, dan desktop
-- Penyimpanan data user, cart, wishlist, payment method, dan theme menggunakan `localStorage`
 
 ## Tech Stack
 
-- React.js
+- React
 - JavaScript
-- React Hooks (`useState`, `useEffect`, `useLayoutEffect`)
-- CSS custom
 - Vite
+- CSS custom
+- React Hooks
 
-## Cara Menjalankan Project
+## Menjalankan Secara Lokal
 
 1. Clone repository ini
 2. Install dependency
@@ -45,17 +42,23 @@ npm install
 npm run dev
 ```
 
-Lalu buka URL yang muncul di terminal, biasanya:
+Setelah itu buka URL yang tampil di terminal, biasanya:
 
 ```bash
 http://localhost:5173
 ```
 
-## Build Production
+## Script
 
 ```bash
+npm run dev
 npm run build
+npm run preview
 ```
+
+## Penyimpanan Data
+
+FreshCart tidak menggunakan backend atau database. Data seperti user, cart, wishlist, metode pembayaran, dan tema disimpan langsung di browser menggunakan `localStorage`.
 
 ## Struktur Folder
 
@@ -85,35 +88,12 @@ FreshCart/
 └── README.md
 ```
 
-## Penjelasan Struktur
-
-- `components/`
-  Berisi komponen UI reusable seperti navbar, form auth, card produk, toast, dan icon app.
-- `constants/`
-  Berisi data statis yang dipakai lintas halaman, seperti daftar metode pembayaran.
-- `data/`
-  Berisi dummy data produk untuk kebutuhan demo frontend.
-- `utils/`
-  Berisi helper logic seperti sinkronisasi `localStorage`, normalisasi user, dan status stok.
-- `App.jsx`
-  Menjadi pusat flow aplikasi, state utama, dan perpindahan tampilan.
-- `styles.css`
-  Menyimpan seluruh styling utama, termasuk responsive layout dan dark mode.
-
-## Highlight Portfolio
-
-- UI grocery app modern dengan flow end-to-end
-- State management sederhana tapi realistis
-- Struktur komponen yang mudah dibaca
-- Local persistence tanpa backend
-- Cocok untuk ditampilkan sebagai project React pemula hingga junior
-
 ## Catatan
 
-- Project ini belum menggunakan backend atau database
-- Authentication masih berupa simple logic / dummy flow
-- Data disimpan di browser melalui `localStorage`
+- Project ini dirancang untuk penggunaan lokal
+- Authentication masih berupa alur sederhana di sisi frontend
+- Seluruh data bergantung pada penyimpanan browser
 
 ## Author
 
-Dibuat oleh Steven Kwek untuk portfolio frontend project.
+Dibuat oleh Steven Kwek.

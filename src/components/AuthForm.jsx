@@ -114,7 +114,7 @@ function AuthForm({ mode, onSwitchMode, onSubmit }) {
           {isForgotPassword
             ? 'Enter your email and we will simulate sending a reset link for your account.'
             : isRegister
-            ? 'No backend needed here, just a simple portfolio-ready auth UI.'
+            ? 'No backend needed here, just a simple local auth UI.'
             : 'Sign in with your username and password to continue shopping smarter.'}
         </p>
 
