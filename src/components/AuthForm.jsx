@@ -159,7 +159,7 @@ function AuthForm({ mode, onSwitchMode, onSubmit }) {
     }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     if (!validateForm()) {
@@ -167,13 +167,24 @@ function AuthForm({ mode, onSwitchMode, onSubmit }) {
       return;
     }
 
-    const response = onSubmit({
-      mode,
-      name: form.name.trim(),
-      username: form.username.trim(),
-      email: form.email.trim(),
-      password: form.password,
-    });
+    let response;
+
+    try {
+      response = await onSubmit({
+        mode,
+        name: form.name.trim(),
+        username: form.username.trim(),
+        email: form.email.trim(),
+        password: form.password,
+      });
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : 'We could not complete your request.',
+      );
+      return;
+    }
 
     if (response?.ok === false) {
       setError(response.error || 'We could not complete your request.');

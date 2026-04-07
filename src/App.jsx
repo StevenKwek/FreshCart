@@ -1,6 +1,7 @@
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import AuthForm from './components/AuthForm';
 import AppIcon from './components/AppIcon';
+import Footer from './components/Footer';
 import Navbar from './components/Navbar';
 import ProductCard from './components/ProductCard';
 import Toast from './components/Toast';
@@ -25,9 +26,32 @@ import {
   syncWishlistWithInventory,
   verifyLocalPassword,
 } from './utils/appState';
+import {
+  checkoutWithFirebaseApi,
+  ensureRemoteUserProfile,
+  fetchAdminOrders,
+  firebaseEnabled,
+  loginWithFirebase,
+  logoutFirebaseUser,
+  registerWithFirebase,
+  sendFirebasePasswordReset,
+  subscribeToFirebaseAuth,
+  subscribeToInventory,
+  subscribeToUserProfile,
+  syncRemoteProfileToInventory,
+  updateAdminOrderStatus,
+  updateRemoteUserProfile,
+} from './services/firebaseClient';
 import { getStockStatus } from './utils/stock';
 
 const currencyFormatter = new Intl.NumberFormat('id-ID');
+const dateTimeFormatter = new Intl.DateTimeFormat('id-ID', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+});
 const inventorySeedVersion = createInventorySeedVersion(initialProducts);
 const landingFeatureHighlights = [
   {
@@ -47,7 +71,41 @@ const landingFeatureHighlights = [
   },
 ];
 
+const orderStatusOptions = ['accepted', 'processing', 'completed', 'cancelled'];
+
+const getOrderStatusMeta = (status) => {
+  switch (status) {
+    case 'accepted':
+      return {
+        label: 'Accepted',
+        className: 'accepted',
+      };
+    case 'processing':
+      return {
+        label: 'Processing',
+        className: 'processing',
+      };
+    case 'completed':
+      return {
+        label: 'Completed',
+        className: 'completed',
+      };
+    case 'cancelled':
+      return {
+        label: 'Cancelled',
+        className: 'cancelled',
+      };
+    case 'pending':
+    default:
+      return {
+        label: 'Pending',
+        className: 'pending',
+      };
+  }
+};
+
 function App() {
+  const useFirebase = firebaseEnabled;
   const initialUserState = normalizeUser(getStoredValue('freshcart-user', null));
   const initialAccountsState = getStoredAccounts();
   const initialInventoryState = syncInventoryWithSeed(
@@ -108,55 +166,98 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [toast, setToast] = useState(null);
+  const [firebaseAuthUser, setFirebaseAuthUser] = useState(null);
+  const [remoteProfile, setRemoteProfile] = useState(null);
+  const [isRemoteAuthReady, setIsRemoteAuthReady] = useState(!useFirebase);
+  const [adminOrders, setAdminOrders] = useState([]);
+  const [isAdminOrdersLoading, setIsAdminOrdersLoading] = useState(false);
+  const [adminOrdersError, setAdminOrdersError] = useState('');
+  const [orderStatusUpdatingId, setOrderStatusUpdatingId] = useState('');
+  const syncErrorShownRef = useRef(false);
+  const skipRemoteSyncRef = useRef(false);
 
   const categories = ['All', ...new Set(inventory.map((product) => product.category))];
+  const username = (user?.username || 'guest').split('@')[0];
+  const isAdminUser = useFirebase && username === 'admin';
 
   useEffect(() => {
+    if (useFirebase) {
+      return;
+    }
+
     window.localStorage.setItem('freshcart-user', JSON.stringify(user));
-  }, [user]);
+  }, [user, useFirebase]);
 
   useEffect(() => {
+    if (useFirebase) {
+      return;
+    }
+
     window.localStorage.setItem('freshcart-auth-accounts', JSON.stringify(accounts));
-  }, [accounts]);
+  }, [accounts, useFirebase]);
 
   useEffect(() => {
+    if (useFirebase) {
+      return;
+    }
+
     window.localStorage.setItem('freshcart-inventory', JSON.stringify(inventory));
-  }, [inventory]);
+  }, [inventory, useFirebase]);
 
   useEffect(() => {
+    if (useFirebase) {
+      return;
+    }
+
     window.localStorage.setItem(
       'freshcart-spending-by-user',
       JSON.stringify(spendingByUser),
     );
-  }, [spendingByUser]);
+  }, [spendingByUser, useFirebase]);
 
   useEffect(() => {
+    if (useFirebase) {
+      return;
+    }
+
     window.localStorage.setItem(
       'freshcart-purchases-by-user',
       JSON.stringify(purchaseHistoryByUser),
     );
-  }, [purchaseHistoryByUser]);
+  }, [purchaseHistoryByUser, useFirebase]);
 
   useEffect(() => {
+    if (useFirebase) {
+      return;
+    }
+
     window.localStorage.setItem(
       'freshcart-cart-by-user',
       JSON.stringify(cartByUser),
     );
-  }, [cartByUser]);
+  }, [cartByUser, useFirebase]);
 
   useEffect(() => {
+    if (useFirebase) {
+      return;
+    }
+
     window.localStorage.setItem(
       'freshcart-wishlist-by-user',
       JSON.stringify(wishlistByUser),
     );
-  }, [wishlistByUser]);
+  }, [wishlistByUser, useFirebase]);
 
   useEffect(() => {
+    if (useFirebase) {
+      return;
+    }
+
     window.localStorage.setItem(
       'freshcart-payment-by-user',
       JSON.stringify(paymentMethodByUser),
     );
-  }, [paymentMethodByUser]);
+  }, [paymentMethodByUser, useFirebase]);
 
   useEffect(() => {
     window.localStorage.setItem('freshcart-theme', JSON.stringify(theme));
@@ -169,8 +270,107 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
+    if (!useFirebase) {
+      return undefined;
+    }
+
+    let unsubscribeProfile = () => {};
+    let isActive = true;
+
+    const unsubscribeAuth = subscribeToFirebaseAuth(async (nextFirebaseUser) => {
+      if (!isActive) {
+        return;
+      }
+
+      setFirebaseAuthUser(nextFirebaseUser);
+
+      if (!nextFirebaseUser) {
+        unsubscribeProfile();
+        setRemoteProfile(null);
+        setUser(null);
+        setCart([]);
+        setWishlist([]);
+        setSelectedPaymentMethod('');
+        setIsRemoteAuthReady(true);
+        return;
+      }
+
+      setIsRemoteAuthReady(false);
+
+      try {
+        await ensureRemoteUserProfile(nextFirebaseUser);
+        unsubscribeProfile();
+        unsubscribeProfile = subscribeToUserProfile(nextFirebaseUser.uid, (profile) => {
+          if (!isActive) {
+            return;
+          }
+
+          setRemoteProfile(profile);
+          setUser(
+            createSessionUser({
+              name:
+                profile?.name ||
+                nextFirebaseUser.displayName ||
+                nextFirebaseUser.email ||
+                'guest',
+              username:
+                profile?.username ||
+                nextFirebaseUser.email?.split('@')[0] ||
+                nextFirebaseUser.uid,
+              email: profile?.email || nextFirebaseUser.email || '',
+            }),
+          );
+          setIsRemoteAuthReady(true);
+        });
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        unsubscribeProfile();
+        setRemoteProfile(null);
+        setUser(null);
+        setIsRemoteAuthReady(true);
+        setToast({
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Firebase session could not be restored.',
+          type: 'warning',
+        });
+      }
+    });
+
+    return () => {
+      isActive = false;
+      unsubscribeProfile();
+      unsubscribeAuth();
+    };
+  }, [useFirebase]);
+
+  useEffect(() => {
+    if (!useFirebase) {
+      return undefined;
+    }
+
+    const unsubscribeInventory = subscribeToInventory((remoteInventory) => {
+      setInventory(
+        remoteInventory.length > 0
+          ? syncInventoryWithSeed(remoteInventory, initialProducts)
+          : syncInventoryWithSeed(initialProducts, initialProducts),
+      );
+    });
+
+    return unsubscribeInventory;
+  }, [useFirebase]);
+
+  useEffect(() => {
+    if (useFirebase) {
+      return;
+    }
+
     setInventory((current) => syncInventoryWithSeed(current, initialProducts));
-  }, [inventorySeedVersion]);
+  }, [inventorySeedVersion, useFirebase]);
 
   useEffect(() => {
     setCart((current) => syncCartWithInventory(current, inventory));
@@ -178,6 +378,73 @@ function App() {
   }, [inventory]);
 
   useEffect(() => {
+    if (!useFirebase || !remoteProfile) {
+      return;
+    }
+
+    const syncedRemoteProfile = syncRemoteProfileToInventory(remoteProfile, inventory);
+    skipRemoteSyncRef.current = true;
+    setCart(syncedRemoteProfile.cart);
+    setWishlist(syncedRemoteProfile.wishlist);
+    setSelectedPaymentMethod(remoteProfile.selectedPaymentMethod || '');
+  }, [remoteProfile, inventory, useFirebase]);
+
+  useEffect(() => {
+    if (!useFirebase || !firebaseAuthUser || !remoteProfile) {
+      return;
+    }
+
+    if (skipRemoteSyncRef.current) {
+      skipRemoteSyncRef.current = false;
+      return;
+    }
+
+    const nextCart = syncCartWithInventory(cart, inventory);
+    const nextWishlist = syncWishlistWithInventory(wishlist, inventory);
+    const nextPaymentMethod = selectedPaymentMethod || '';
+    const updates = {};
+
+    if (JSON.stringify(remoteProfile.cart || []) !== JSON.stringify(nextCart)) {
+      updates.cart = nextCart;
+    }
+
+    if (JSON.stringify(remoteProfile.wishlist || []) !== JSON.stringify(nextWishlist)) {
+      updates.wishlist = nextWishlist;
+    }
+
+    if ((remoteProfile.selectedPaymentMethod || '') !== nextPaymentMethod) {
+      updates.selectedPaymentMethod = nextPaymentMethod;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      syncErrorShownRef.current = false;
+      return;
+    }
+
+    updateRemoteUserProfile(firebaseAuthUser.uid, updates).catch(() => {
+      if (!syncErrorShownRef.current) {
+        setToast({
+          message: 'Firebase sync failed. Please try your action again.',
+          type: 'warning',
+        });
+        syncErrorShownRef.current = true;
+      }
+    });
+  }, [
+    cart,
+    firebaseAuthUser,
+    inventory,
+    remoteProfile,
+    selectedPaymentMethod,
+    useFirebase,
+    wishlist,
+  ]);
+
+  useEffect(() => {
+    if (useFirebase) {
+      return;
+    }
+
     const userKey = getUserStorageKey(user);
 
     if (!userKey) {
@@ -200,9 +467,13 @@ function App() {
       ),
     );
     setSelectedPaymentMethod(getScopedStoredValue(paymentMethodByUser, userKey, ''));
-  }, [user]);
+  }, [user, paymentMethodByUser, cartByUser, wishlistByUser, inventory, useFirebase]);
 
   useEffect(() => {
+    if (useFirebase) {
+      return;
+    }
+
     const userKey = getUserStorageKey(user);
 
     if (!userKey) {
@@ -221,9 +492,13 @@ function App() {
         [userKey]: cart,
       };
     });
-  }, [cart, user]);
+  }, [cart, user, useFirebase]);
 
   useEffect(() => {
+    if (useFirebase) {
+      return;
+    }
+
     const userKey = getUserStorageKey(user);
 
     if (!userKey) {
@@ -242,9 +517,13 @@ function App() {
         [userKey]: wishlist,
       };
     });
-  }, [wishlist, user]);
+  }, [wishlist, user, useFirebase]);
 
   useEffect(() => {
+    if (useFirebase) {
+      return;
+    }
+
     const userKey = getUserStorageKey(user);
 
     if (!userKey) {
@@ -261,7 +540,7 @@ function App() {
         [userKey]: selectedPaymentMethod,
       };
     });
-  }, [selectedPaymentMethod, user]);
+  }, [selectedPaymentMethod, user, useFirebase]);
 
   useEffect(() => {
     if (user && currentView === 'landing') {
@@ -287,6 +566,14 @@ function App() {
       }
     }
   }, [selectedProductId, inventory, currentView]);
+
+  useEffect(() => {
+    if (!useFirebase || !isAdminUser || currentView !== 'profile') {
+      return;
+    }
+
+    loadAdminOrders();
+  }, [currentView, firebaseAuthUser, isAdminUser, useFirebase]);
 
   const selectedProduct =
     inventory.find((product) => product.id === selectedProductId) || null;
@@ -333,7 +620,49 @@ function App() {
     setTheme((current) => (current === 'dark' ? 'light' : 'dark'));
   };
 
-  const handleAuthSubmit = ({ mode, name, username, email, password }) => {
+  const handleAuthSubmit = async ({ mode, name, username, email, password }) => {
+    if (useFirebase) {
+      try {
+        if (mode === 'register') {
+          const result = await registerWithFirebase({
+            name,
+            username,
+            email,
+            password,
+          });
+
+          navigateTo('home');
+          showToast(`Welcome, ${result.profile.username}!`);
+          return { ok: true };
+        }
+
+        if (mode === 'forgot') {
+          await sendFirebasePasswordReset(email);
+          return {
+            ok: true,
+            successMessage: `Reset password email has been sent to ${normalizeEmail(email)}.`,
+          };
+        }
+
+        const result = await loginWithFirebase({
+          identifier: username,
+          password,
+        });
+
+        navigateTo('home');
+        showToast(`Welcome back, ${result.profile.username}!`);
+        return { ok: true };
+      } catch (error) {
+        return {
+          ok: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Firebase authentication failed.',
+        };
+      }
+    }
+
     if (mode === 'register') {
       const existingUsername = accounts.find(
         (account) => account.username === normalizeUsernameInput(username),
@@ -411,15 +740,53 @@ function App() {
     return { ok: true };
   };
 
-  const username = (user?.username || 'guest').split('@')[0];
-  const userKey = getUserStorageKey(user);
-  const activeSpending = spendingByUser[username] || 0;
-  const purchaseHistory = getScopedStoredValue(purchaseHistoryByUser, userKey, []);
+  const userKey = useFirebase
+    ? firebaseAuthUser?.uid || getUserStorageKey(user)
+    : getUserStorageKey(user);
+  const activeSpending = useFirebase
+    ? remoteProfile?.spendingTotal || 0
+    : spendingByUser[username] || 0;
+  const purchaseHistory = useFirebase
+    ? remoteProfile?.purchaseHistory || []
+    : getScopedStoredValue(purchaseHistoryByUser, userKey, []);
   const activePaymentMethod = paymentMethods
     .flatMap((group) => group.options)
     .find((option) => option.id === selectedPaymentMethod);
 
-  const handleLogout = () => {
+  const loadAdminOrders = async () => {
+    if (!isAdminUser || !firebaseAuthUser) {
+      return;
+    }
+
+    setIsAdminOrdersLoading(true);
+    setAdminOrdersError('');
+
+    try {
+      const orders = await fetchAdminOrders(firebaseAuthUser);
+      setAdminOrders(orders);
+    } catch (error) {
+      setAdminOrdersError(
+        error instanceof Error ? error.message : 'Failed to load admin orders.',
+      );
+    } finally {
+      setIsAdminOrdersLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    if (useFirebase) {
+      try {
+        await logoutFirebaseUser();
+      } finally {
+        navigateTo('landing');
+        setSearchTerm('');
+        setActiveCategory('All');
+        showToast('You have been logged out.', 'info');
+      }
+
+      return;
+    }
+
     setUser(null);
     navigateTo('landing');
     setCart([]);
@@ -428,6 +795,34 @@ function App() {
     setSearchTerm('');
     setActiveCategory('All');
     showToast('You have been logged out.', 'info');
+  };
+
+  const handleAdminOrderStatusChange = async (orderId, status) => {
+    if (!firebaseAuthUser) {
+      showToast('Please login again to manage orders.', 'warning');
+      return;
+    }
+
+    setOrderStatusUpdatingId(orderId);
+
+    try {
+      await updateAdminOrderStatus({
+        firebaseUser: firebaseAuthUser,
+        orderId,
+        status,
+      });
+      await loadAdminOrders();
+      showToast(`Order status updated to ${status}.`);
+    } catch (error) {
+      showToast(
+        error instanceof Error
+          ? error.message
+          : 'Failed to update the selected order.',
+        'warning',
+      );
+    } finally {
+      setOrderStatusUpdatingId('');
+    }
   };
 
   const toggleWishlist = (productId) => {
@@ -504,7 +899,7 @@ function App() {
     });
   };
 
-  const placeOrder = () => {
+  const placeOrder = async () => {
     if (cartItems.length === 0) {
       showToast('Your cart is still empty.', 'warning');
       return;
@@ -517,6 +912,31 @@ function App() {
 
     if (!userKey) {
       showToast('Please login first before placing an order.', 'warning');
+      return;
+    }
+
+    if (useFirebase) {
+      if (!firebaseAuthUser) {
+        showToast('Please login first before placing an order.', 'warning');
+        return;
+      }
+
+      try {
+        await checkoutWithFirebaseApi({
+          firebaseUser: firebaseAuthUser,
+          cart,
+          selectedPaymentMethod,
+        });
+
+        navigateTo('home');
+        showToast('Checkout berhasil. Pesanan kamu sedang diproses.');
+      } catch (error) {
+        showToast(
+          error instanceof Error ? error.message : 'Checkout failed. Please try again.',
+          'warning',
+        );
+      }
+
       return;
     }
 
@@ -1112,9 +1532,9 @@ function App() {
             <div className="summary-row">
               <span className="icon-text">
                 <AppIcon type="delivery" className="summary-icon" />
-                Status akun
+                Role akun
               </span>
-              <strong>Active</strong>
+              <strong>{isAdminUser ? 'Admin' : 'Active'}</strong>
             </div>
           </div>
           <div className="profile-action-buttons">
@@ -1126,6 +1546,165 @@ function App() {
             </button>
           </div>
         </aside>
+
+        <div className="profile-card profile-section-card profile-orders-card">
+          <div className="section-header compact profile-section-header">
+            <div>
+              <span className="mini-badge">
+                <AppIcon type="products" className="badge-icon" />
+                Order History
+              </span>
+              <h2>Riwayat pesanan kamu</h2>
+            </div>
+          </div>
+
+          {purchaseHistory.length > 0 ? (
+            <div className="order-history-list">
+              {purchaseHistory.map((order) => {
+                const statusMeta = getOrderStatusMeta(order.status);
+
+                return (
+                  <article key={order.id} className="order-history-card">
+                    <div className="order-history-top">
+                      <div>
+                        <strong className="order-history-id">{order.id}</strong>
+                        <p className="order-history-date">
+                          {dateTimeFormatter.format(new Date(order.createdAt))}
+                        </p>
+                      </div>
+                      <span className={`order-status-pill ${statusMeta.className}`}>
+                        {statusMeta.label}
+                      </span>
+                    </div>
+
+                    <div className="order-history-meta">
+                      <span>Payment: {order.paymentMethod}</span>
+                      <span>{order.totalItems} item</span>
+                      <strong>Rp {currencyFormatter.format(order.totalPrice || 0)}</strong>
+                    </div>
+
+                    <div className="order-history-items">
+                      {(order.items || []).map((item) => (
+                        <div
+                          key={`${order.id}-${item.productId}`}
+                          className="order-history-item"
+                        >
+                          <span>{item.name}</span>
+                          <span>
+                            {item.quantity} x {item.unit}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="empty-state left compact-empty-state">
+              <h3>Belum ada order</h3>
+              <p>Pesanan yang sudah kamu checkout akan muncul di sini.</p>
+            </div>
+          )}
+        </div>
+
+        {isAdminUser ? (
+          <div className="profile-card profile-section-card admin-orders-card">
+            <div className="section-header compact profile-section-header">
+              <div>
+                <span className="mini-badge">
+                  <AppIcon type="delivery" className="badge-icon" />
+                  Admin Orders
+                </span>
+                <h2>Kelola status pesanan</h2>
+              </div>
+              <button
+                className="secondary-button"
+                onClick={loadAdminOrders}
+                disabled={isAdminOrdersLoading}
+              >
+                {isAdminOrdersLoading ? 'Refreshing...' : 'Refresh Orders'}
+              </button>
+            </div>
+
+            {adminOrdersError ? (
+              <div className="form-error">{adminOrdersError}</div>
+            ) : null}
+
+            {isAdminOrdersLoading && adminOrders.length === 0 ? (
+              <div className="empty-state left compact-empty-state">
+                <h3>Loading orders</h3>
+                <p>Sedang mengambil pesanan terbaru dari Firestore.</p>
+              </div>
+            ) : null}
+
+            {!isAdminOrdersLoading && adminOrders.length === 0 ? (
+              <div className="empty-state left compact-empty-state">
+                <h3>Belum ada pesanan</h3>
+                <p>Order baru yang masuk akan tampil di panel admin ini.</p>
+              </div>
+            ) : null}
+
+            {adminOrders.length > 0 ? (
+              <div className="admin-order-list">
+                {adminOrders.map((order) => {
+                  const statusMeta = getOrderStatusMeta(order.status);
+
+                  return (
+                    <article key={order.id} className="admin-order-item">
+                      <div className="order-history-top">
+                        <div>
+                          <strong className="order-history-id">{order.id}</strong>
+                          <p className="order-history-date">
+                            {order.userEmail || order.userId}
+                          </p>
+                        </div>
+                        <span className={`order-status-pill ${statusMeta.className}`}>
+                          {statusMeta.label}
+                        </span>
+                      </div>
+
+                      <div className="order-history-meta">
+                        <span>
+                          {dateTimeFormatter.format(new Date(order.createdAt))}
+                        </span>
+                        <span>{order.totalItems} item</span>
+                        <strong>Rp {currencyFormatter.format(order.totalPrice || 0)}</strong>
+                      </div>
+
+                      <div className="admin-order-actions">
+                        {orderStatusOptions.map((status) => (
+                          <button
+                            key={`${order.id}-${status}`}
+                            className={`status-action-button ${
+                              order.status === status ? 'active' : ''
+                            }`}
+                            data-status={status}
+                            onClick={() =>
+                              handleAdminOrderStatusChange(order.id, status)
+                            }
+                            disabled={
+                              order.status === status ||
+                              orderStatusUpdatingId === order.id
+                            }
+                          >
+                            {status === 'accepted'
+                              ? 'Accept'
+                              : status === 'processing'
+                                ? 'Process'
+                                : status === 'completed'
+                                  ? 'Complete'
+                                  : 'Cancel'}
+                          </button>
+                        ))}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </section>
     </main>
   );
@@ -1149,6 +1728,17 @@ function App() {
   };
 
   const renderCurrentPage = () => {
+    if (useFirebase && !isRemoteAuthReady) {
+      return (
+        <main className="landing-page">
+          <div className="empty-state">
+            <h3>Loading your account</h3>
+            <p>Syncing Firebase Auth and Firestore data for this session.</p>
+          </div>
+        </main>
+      );
+    }
+
     if (!user) {
       if (
         currentView === 'login' ||
@@ -1182,13 +1772,26 @@ function App() {
           onToggleTheme={toggleTheme}
         />
         {renderAuthenticatedView()}
+        <Footer user={user} onNavigate={navigateTo} />
       </>
     );
   };
 
   return (
     <div className={`app-shell ${theme === 'dark' ? 'dark-theme' : ''}`}>
-      {renderCurrentPage()}
+      {!user &&
+      !(
+        currentView === 'login' ||
+        currentView === 'register' ||
+        currentView === 'forgot'
+      ) ? (
+        <>
+          {renderCurrentPage()}
+          <Footer user={user} onNavigate={navigateTo} />
+        </>
+      ) : (
+        renderCurrentPage()
+      )}
       <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );

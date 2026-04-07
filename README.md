@@ -1,25 +1,22 @@
 # FreshCart
 
-FreshCart adalah aplikasi web grocery berbasis React yang berjalan sepenuhnya secara lokal. Aplikasi ini menampilkan alur belanja sederhana mulai dari login, melihat produk, menyimpan wishlist, mengatur cart, hingga checkout dengan penyimpanan data di `localStorage`.
+FreshCart adalah aplikasi web grocery berbasis React dengan Firebase Auth, Cloud Firestore, dan checkout API sederhana. User bisa login dari device lain, menyimpan cart dan wishlist, lalu menyelesaikan checkout dengan data yang tersinkron ke database.
 
 ## Ringkasan
 
 - Nama project: `FreshCart`
-- Tipe project: frontend-only web app
-- Penyimpanan data: `localStorage`
-- Tujuan penggunaan: simulasi belanja grocery untuk penggunaan lokal
+- Frontend: React + Vite
+- Auth: Firebase Authentication
+- Database: Cloud Firestore
+- Checkout API: Vercel Serverless Function (`/api/checkout`)
 
 ## Fitur
 
-- Landing page dengan tampilan grocery app modern
-- Login, register, dan forgot password dengan validasi sederhana
-- Katalog produk dengan pencarian dan filter kategori
-- Detail produk dengan informasi stok
-- Wishlist untuk menyimpan produk favorit
-- Cart dengan pengaturan jumlah produk
-- Checkout sederhana dengan pilihan metode pembayaran Indonesia
-- Profile page dengan ringkasan akun
-- Toast notification untuk aksi penting
+- Login, register, dan reset password dengan Firebase Auth
+- Katalog produk dengan search dan filter kategori
+- Wishlist, cart, metode pembayaran, dan riwayat pembelian tersimpan per user
+- Checkout dengan API server-side untuk membuat order dan mengurangi stok
+- Profile page dengan ringkasan akun dan order
 - Dark mode
 - Responsive layout untuk mobile, tablet, dan desktop
 
@@ -28,25 +25,92 @@ FreshCart adalah aplikasi web grocery berbasis React yang berjalan sepenuhnya se
 - React
 - JavaScript
 - Vite
-- CSS custom
-- React Hooks
+- Firebase Auth
+- Cloud Firestore
+- Firebase Admin SDK
+- Vercel Functions
 
 ## Menjalankan Secara Lokal
 
-1. Clone repository ini
-2. Install dependency
-3. Jalankan development server
+1. Install dependency
+2. Copy `.env.example` menjadi `.env.local`
+3. Isi semua variabel Firebase client dan admin
+4. Seed produk ke Firestore
+5. Jalankan app
 
 ```bash
 npm install
+npm run seed:products
 npm run dev
 ```
 
-Setelah itu buka URL yang tampil di terminal, biasanya:
+Untuk checkout API di local, ada dua opsi:
 
 ```bash
-http://localhost:5173
+# Opsi cepat: fallback ke Firestore transaction langsung dari client
+npm run dev
+
+# Opsi lengkap: jalankan seperti environment Vercel
+npx vercel dev
 ```
+
+## Environment Variables
+
+Client SDK:
+
+```bash
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+VITE_CHECKOUT_API_URL=/api/checkout
+```
+
+Admin SDK:
+
+```bash
+FIREBASE_ADMIN_PROJECT_ID=
+FIREBASE_ADMIN_CLIENT_EMAIL=
+FIREBASE_ADMIN_PRIVATE_KEY=
+```
+
+Alternatif admin config:
+
+```bash
+FIREBASE_ADMIN_SERVICE_ACCOUNT_JSON=
+```
+
+## Setup Firebase Step-by-Step
+
+1. Buat project baru di Firebase Console
+2. Tambahkan Web App dan ambil config Firebase
+3. Aktifkan `Authentication > Sign-in method > Email/Password`
+4. Aktifkan `Cloud Firestore`
+5. Masukkan semua env ke `.env.local`
+6. Deploy rules dari `firestore.rules`
+7. Jalankan seed produk:
+
+```bash
+npm run seed:products
+```
+
+## Struktur Data Firestore
+
+- `products/{productId}`
+- `users/{uid}`
+
+Field penting user:
+
+- `name`
+- `username`
+- `email`
+- `wishlist`
+- `cart`
+- `selectedPaymentMethod`
+- `spendingTotal`
+- `purchaseHistory`
 
 ## Script
 
@@ -54,45 +118,23 @@ http://localhost:5173
 npm run dev
 npm run build
 npm run preview
+npm run seed:products
 ```
 
-## Penyimpanan Data
+## Deploy ke Vercel
 
-FreshCart tidak menggunakan backend atau database. Data seperti user, cart, wishlist, metode pembayaran, dan tema disimpan langsung di browser menggunakan `localStorage`.
+1. Push repo ke GitHub
+2. Import project ke Vercel
+3. Isi semua env Firebase client dan admin di dashboard Vercel
+4. Deploy
 
-## Struktur Folder
-
-```text
-FreshCart/
-├── src/
-│   ├── components/
-│   │   ├── AppIcon.jsx
-│   │   ├── AuthForm.jsx
-│   │   ├── Navbar.jsx
-│   │   ├── ProductCard.jsx
-│   │   └── Toast.jsx
-│   ├── constants/
-│   │   └── paymentMethods.js
-│   ├── data/
-│   │   └── products.js
-│   ├── utils/
-│   │   ├── appState.js
-│   │   └── stock.js
-│   ├── App.jsx
-│   ├── main.jsx
-│   └── styles.css
-├── index.html
-├── package.json
-├── package-lock.json
-├── vite.config.js
-└── README.md
-```
+Checkout API menggunakan file `api/checkout.js`, jadi env admin wajib tersedia di Vercel.
 
 ## Catatan
 
-- Project ini dirancang untuk penggunaan lokal
-- Authentication masih berupa alur sederhana di sisi frontend
-- Seluruh data bergantung pada penyimpanan browser
+- Kalau env Firebase belum diisi, app masih punya fallback lokal untuk pengembangan
+- Untuk sinkronisasi stok antar device, Firestore products harus sudah di-seed
+- Rule Firestore yang ada masih versi dasar dan bisa diperketat lagi sesuai kebutuhan produksi
 
 ## Author
 

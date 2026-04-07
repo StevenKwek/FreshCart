@@ -6,9 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "seed:products": "node scripts/seed-firestore-products.mjs"
   },
   "dependencies": {
+    "firebase": "^12.11.0",
+    "firebase-admin": "^13.7.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
