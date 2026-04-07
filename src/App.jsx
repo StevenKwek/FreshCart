@@ -4,201 +4,29 @@ import AppIcon from './components/AppIcon';
 import Navbar from './components/Navbar';
 import ProductCard from './components/ProductCard';
 import Toast from './components/Toast';
+import { paymentMethods } from './constants/paymentMethods';
 import { products as initialProducts } from './data/products';
+import {
+  createInventorySeedVersion,
+  getInitialTheme,
+  getScopedStoredValue,
+  getStoredValue,
+  mergeLegacyScopedValue,
+  normalizeUser,
+  syncCartWithInventory,
+  syncInventoryWithSeed,
+  syncWishlistWithInventory,
+} from './utils/appState';
 import { getStockStatus } from './utils/stock';
 
 const currencyFormatter = new Intl.NumberFormat('id-ID');
-const inventorySeedVersion = initialProducts
-  .map(
-    (product) =>
-      `${product.id}-${product.name}-${product.category}-${product.price}-${product.stock}`,
-  )
-  .join('|');
-const paymentMethods = [
-  {
-    group: 'E-Wallet',
-    options: [
-      { id: 'gopay', label: 'GoPay', note: 'Pembayaran instan via aplikasi GoJek' },
-      { id: 'ovo', label: 'OVO', note: 'Cocok untuk transaksi harian yang cepat' },
-      { id: 'dana', label: 'DANA', note: 'Transfer cepat dengan saldo e-wallet' },
-      { id: 'shopeepay', label: 'ShopeePay', note: 'Praktis untuk pembayaran mobile' },
-    ],
-  },
-  {
-    group: 'Bank Transfer',
-    options: [
-      { id: 'bca-va', label: 'BCA', note: 'Transfer via m-BCA atau ATM' },
-      { id: 'mandiri-va', label: 'Mandiri', note: 'Pembayaran mudah via Livin' },
-      { id: 'bni-va', label: 'BNI', note: 'Transfer cepat dari BNI Mobile' },
-      { id: 'bri-va', label: 'BRI', note: 'Pembayaran lewat BRImo atau ATM' },
-    ],
-  },
-];
-
-const getStoredValue = (key, fallback) => {
-  if (typeof window === 'undefined') {
-    return fallback;
-  }
-
-  const raw = window.localStorage.getItem(key);
-
-  if (!raw) {
-    return fallback;
-  }
-
-  try {
-    return JSON.parse(raw);
-  } catch (error) {
-    return fallback;
-  }
-};
-
-const getInitialTheme = () => {
-  const storedTheme = getStoredValue('freshcart-theme', null);
-  return storedTheme === 'dark' ? 'dark' : 'light';
-};
-
-const normalizeUser = (storedUser) => {
-  if (!storedUser) {
-    return null;
-  }
-
-  const rawUsernameValue =
-    storedUser.username ||
-    (typeof storedUser.email === 'string' ? storedUser.email.split('@')[0] : '') ||
-    storedUser.name ||
-    'guest';
-
-  const rawUsername =
-    typeof rawUsernameValue === 'string'
-      ? rawUsernameValue.split('@')[0]
-      : 'guest';
-
-  const username = rawUsername.toLowerCase().replace(/\s+/g, '');
-
-  return {
-    ...storedUser,
-    username,
-    name:
-      storedUser.name && !storedUser.name.includes('@')
-        ? storedUser.name
-        : username,
-  };
-};
-
-const getUserStorageKey = (userValue) => {
-  if (!userValue) {
-    return '';
-  }
-
-  if (typeof userValue === 'string') {
-    return normalizeUser({ username: userValue })?.username || '';
-  }
-
-  return normalizeUser(userValue)?.username || '';
-};
-
-const getScopedStoredValue = (storedMap, userValue, fallback) => {
-  const userKey = getUserStorageKey(userValue);
-
-  if (!userKey) {
-    return fallback;
-  }
-
-  return storedMap[userKey] ?? fallback;
-};
-
-const mergeLegacyScopedValue = (storedMap, userValue, legacyValue) => {
-  const userKey = getUserStorageKey(userValue);
-
-  if (!userKey || storedMap[userKey] !== undefined) {
-    return storedMap;
-  }
-
-  if (Array.isArray(legacyValue) && legacyValue.length === 0) {
-    return storedMap;
-  }
-
-  if (!Array.isArray(legacyValue) && !legacyValue) {
-    return storedMap;
-  }
-
-  return {
-    ...storedMap,
-    [userKey]: legacyValue,
-  };
-};
-
-const syncInventoryWithSeed = (storedInventory) => {
-  if (!Array.isArray(storedInventory) || storedInventory.length === 0) {
-    return initialProducts.map((product) => ({
-      ...product,
-      baseStock: product.stock,
-    }));
-  }
-
-  const storedMap = new Map(
-    storedInventory.map((product) => [product.id, product]),
-  );
-
-  return initialProducts.map((product) => {
-    const savedProduct = storedMap.get(product.id);
-
-    if (!savedProduct) {
-      return product;
-    }
-
-    const canReuseSavedStock =
-      typeof savedProduct.stock === 'number' && savedProduct.baseStock === product.stock;
-
-    return {
-      ...product,
-      stock: canReuseSavedStock ? savedProduct.stock : product.stock,
-      baseStock: product.stock,
-    };
-  });
-};
-
-const syncCartWithInventory = (storedCart, nextInventory) => {
-  if (!Array.isArray(storedCart) || storedCart.length === 0) {
-    return [];
-  }
-
-  return storedCart
-    .map((item) => {
-      const product = nextInventory.find((entry) => entry.id === item.productId);
-
-      if (!product) {
-        return null;
-      }
-
-      const nextQuantity = Math.min(item.quantity, product.stock);
-
-      if (nextQuantity <= 0) {
-        return null;
-      }
-
-      return {
-        ...item,
-        quantity: nextQuantity,
-      };
-    })
-    .filter(Boolean);
-};
-
-const syncWishlistWithInventory = (storedWishlist, nextInventory) => {
-  if (!Array.isArray(storedWishlist) || storedWishlist.length === 0) {
-    return [];
-  }
-
-  const validProductIds = new Set(nextInventory.map((product) => product.id));
-  return storedWishlist.filter((productId) => validProductIds.has(productId));
-};
+const inventorySeedVersion = createInventorySeedVersion(initialProducts);
 
 function App() {
   const initialUserState = normalizeUser(getStoredValue('freshcart-user', null));
   const initialInventoryState = syncInventoryWithSeed(
     getStoredValue('freshcart-inventory', initialProducts),
+    initialProducts,
   );
   const initialCartByUserState = mergeLegacyScopedValue(
     getStoredValue('freshcart-cart-by-user', {}),
@@ -300,7 +128,7 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
-    setInventory((current) => syncInventoryWithSeed(current));
+    setInventory((current) => syncInventoryWithSeed(current, initialProducts));
   }, [inventorySeedVersion]);
 
   useEffect(() => {
