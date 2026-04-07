@@ -18,7 +18,12 @@ import {
   setDoc,
   updateDoc,
 } from 'firebase/firestore';
-import { auth, db, ensureFirebaseAuthPersistence, isFirebaseConfigured } from '../lib/firebase';
+import {
+  auth,
+  db,
+  ensureFirebaseAuthPersistence,
+  isFirebaseConfigured,
+} from '../lib/firebase';
 import {
   createSessionUser,
   normalizeEmail,
@@ -118,7 +123,23 @@ export const subscribeToFirebaseAuth = (callback) => {
     return () => {};
   }
 
-  return onAuthStateChanged(auth, callback);
+  let unsubscribe = () => {};
+  let isDisposed = false;
+
+  ensureFirebaseAuthPersistence()
+    .catch(() => {})
+    .finally(() => {
+      if (isDisposed) {
+        return;
+      }
+
+      unsubscribe = onAuthStateChanged(auth, callback);
+    });
+
+  return () => {
+    isDisposed = true;
+    unsubscribe();
+  };
 };
 
 export const ensureRemoteUserProfile = async (firebaseUser, overrides = {}) => {
