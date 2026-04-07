@@ -133,6 +133,25 @@ function AppIcon({ type, className = '' }) {
         />
       </>
     ),
+    leaf: (
+      <>
+        <path
+          d="M19 5.2c-3.6.1-6.2 1-8 2.8C9 10 8.1 12.6 8 16.2c3.7 0 6.3-.9 8.1-2.7C17.9 11.7 18.9 8.9 19 5.2Z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M5.5 18.5c3.5-2.1 6.3-4.9 8.5-8.5M9 13.7c-1.7-.2-3.1-.7-4.2-1.8"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </>
+    ),
     user: (
       <>
         <circle cx="12" cy="8.2" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.8" />

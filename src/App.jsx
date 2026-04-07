@@ -29,6 +29,23 @@ import { getStockStatus } from './utils/stock';
 
 const currencyFormatter = new Intl.NumberFormat('id-ID');
 const inventorySeedVersion = createInventorySeedVersion(initialProducts);
+const landingFeatureHighlights = [
+  {
+    icon: 'delivery',
+    title: 'Pengiriman Cepat',
+    description: 'Pesanan harian diproses cepat untuk area layanan FreshCart.',
+  },
+  {
+    icon: 'leaf',
+    title: 'Pilihan Lebih Segar',
+    description: 'Produk kebutuhan rumah tangga dipilih dari stok yang rapi dan terjaga.',
+  },
+  {
+    icon: 'wallet',
+    title: 'Bayar Mudah',
+    description: 'Dukung transfer, QRIS, COD, dan metode pembayaran yang familiar.',
+  },
+];
 
 function App() {
   const initialUserState = normalizeUser(getStoredValue('freshcart-user', null));
@@ -619,6 +636,31 @@ function App() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="why-us-section">
+        <div className="section-header">
+          <div>
+            <span className="mini-badge">Why Choose Us</span>
+            <h2>Kenapa Pilih Kami?</h2>
+            <p>
+              FreshCart dirancang supaya belanja kebutuhan harian terasa lebih cepat,
+              lebih tenang, dan tetap praktis dari awal sampai checkout.
+            </p>
+          </div>
+        </div>
+
+        <div className="why-us-grid">
+          {landingFeatureHighlights.map((feature) => (
+            <article key={feature.title} className="why-us-card">
+              <span className="why-us-icon">
+                <AppIcon type={feature.icon} className="why-us-icon-svg" />
+              </span>
+              <h3>{feature.title}</h3>
+              <p>{feature.description}</p>
+            </article>
+          ))}
         </div>
       </section>
     </main>
