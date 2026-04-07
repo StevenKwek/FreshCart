@@ -3,7 +3,6 @@ import AuthForm from './components/AuthForm';
 import AppIcon from './components/AppIcon';
 import Footer from './components/Footer';
 import Navbar from './components/Navbar';
-import PaymentLogo from './components/PaymentLogo';
 import ProductCard from './components/ProductCard';
 import Toast from './components/Toast';
 import { paymentMethods } from './constants/paymentMethods';
@@ -170,12 +169,14 @@ function App() {
   const [firebaseAuthUser, setFirebaseAuthUser] = useState(null);
   const [remoteProfile, setRemoteProfile] = useState(null);
   const [isRemoteAuthReady, setIsRemoteAuthReady] = useState(!useFirebase);
+  const [showStartupSplash, setShowStartupSplash] = useState(useFirebase);
   const [adminOrders, setAdminOrders] = useState([]);
   const [isAdminOrdersLoading, setIsAdminOrdersLoading] = useState(false);
   const [adminOrdersError, setAdminOrdersError] = useState('');
   const [orderStatusUpdatingId, setOrderStatusUpdatingId] = useState('');
   const syncErrorShownRef = useRef(false);
   const skipRemoteSyncRef = useRef(false);
+  const startupSplashTimerRef = useRef(null);
 
   const categories = ['All', ...new Set(inventory.map((product) => product.category))];
   const username = (user?.username || 'guest').split('@')[0];
@@ -278,6 +279,20 @@ function App() {
     let unsubscribeProfile = () => {};
     let isActive = true;
 
+    const finishStartupSplash = () => {
+      if (startupSplashTimerRef.current) {
+        window.clearTimeout(startupSplashTimerRef.current);
+      }
+
+      startupSplashTimerRef.current = window.setTimeout(() => {
+        if (!isActive) {
+          return;
+        }
+
+        setShowStartupSplash(false);
+      }, 220);
+    };
+
     const unsubscribeAuth = subscribeToFirebaseAuth(async (nextFirebaseUser) => {
       if (!isActive) {
         return;
@@ -293,6 +308,7 @@ function App() {
         setWishlist([]);
         setSelectedPaymentMethod('');
         setIsRemoteAuthReady(true);
+        finishStartupSplash();
         return;
       }
 
@@ -322,6 +338,7 @@ function App() {
             }),
           );
           setIsRemoteAuthReady(true);
+          finishStartupSplash();
         });
       } catch (error) {
         if (!isActive) {
@@ -339,11 +356,15 @@ function App() {
               : 'Firebase session could not be restored.',
           type: 'warning',
         });
+        finishStartupSplash();
       }
     });
 
     return () => {
       isActive = false;
+      if (startupSplashTimerRef.current) {
+        window.clearTimeout(startupSplashTimerRef.current);
+      }
       unsubscribeProfile();
       unsubscribeAuth();
     };
@@ -1409,10 +1430,7 @@ function App() {
                         }`}
                         onClick={() => setSelectedPaymentMethod(option.id)}
                       >
-                        <div className="payment-method-top">
-                          <PaymentLogo methodId={option.id} />
-                          <span className="payment-method-name">{option.label}</span>
-                        </div>
+                        <span className="payment-method-name">{option.label}</span>
                         <span className="payment-method-note">{option.note}</span>
                       </button>
                     ))}
@@ -1736,13 +1754,26 @@ function App() {
   };
 
   const renderCurrentPage = () => {
-    if (useFirebase && !isRemoteAuthReady) {
+    if (
+      useFirebase &&
+      (showStartupSplash || !isRemoteAuthReady) &&
+      !['login', 'register', 'forgot'].includes(currentView)
+    ) {
       return (
-        <main className="landing-page">
-          <div className="empty-state">
-            <h3>Loading your account</h3>
-            <p>Syncing Firebase Auth and Firestore data for this session.</p>
-          </div>
+        <main className="landing-page startup-splash">
+          <section className="startup-splash-card">
+            <span className="startup-splash-mark">
+              <AppIcon type="cart" className="startup-splash-icon" />
+            </span>
+            <span className="mini-badge">FreshCart</span>
+            <h1>Menyiapkan session kamu</h1>
+            <p>Mohon tunggu sebentar, kami sedang memulihkan akun dan data belanja kamu.</p>
+            <div className="startup-splash-loader" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
+          </section>
         </main>
       );
     }
