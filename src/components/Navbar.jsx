@@ -115,7 +115,7 @@ function Navbar({
     .toLowerCase()
     .replace(/\s+/g, '');
   const initial = username[0]?.toUpperCase() || 'G';
-  const displayName = user?.name || username;
+  const displayName = username;
 
   const handleNavigate = (view) => {
     setMobileOpen(false);

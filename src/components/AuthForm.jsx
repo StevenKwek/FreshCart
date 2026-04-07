@@ -6,70 +6,197 @@ const initialFields = {
   username: '',
   email: '',
   password: '',
+  confirmPassword: '',
 };
 
 function AuthForm({ mode, onSwitchMode, onSubmit }) {
   const [form, setForm] = useState(initialFields);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [allowManualEntry, setAllowManualEntry] = useState(false);
 
   const isRegister = mode === 'register';
   const isForgotPassword = mode === 'forgot';
+  const passwordChecks = {
+    length: form.password.length >= 8,
+    letter: /[A-Za-z]/.test(form.password),
+    number: /\d/.test(form.password),
+  };
 
   useEffect(() => {
     setForm(initialFields);
+    setFieldErrors({});
     setError('');
     setSuccessMessage('');
     setShowPassword(false);
+    setAllowManualEntry(false);
   }, [mode]);
+
+  const validateField = (fieldName, formValue = form) => {
+    const value = formValue[fieldName] || '';
+
+    if (fieldName === 'name') {
+      if (!isRegister) {
+        return '';
+      }
+
+      if (!value.trim()) {
+        return 'Full name is required.';
+      }
+
+      if (value.trim().length < 2) {
+        return 'Full name must be at least 2 characters.';
+      }
+    }
+
+    if (fieldName === 'username') {
+      if (isForgotPassword) {
+        return '';
+      }
+
+      if (!value.trim()) {
+        return isRegister
+          ? 'Username is required.'
+          : 'Enter your username or email.';
+      }
+
+      if (
+        isRegister &&
+        !/^[a-z0-9._]{3,20}$/.test(value.trim().toLowerCase())
+      ) {
+        return 'Use 3-20 lowercase letters, numbers, dots, or underscores.';
+      }
+    }
+
+    if (fieldName === 'email') {
+      if (!isRegister && !isForgotPassword) {
+        return '';
+      }
+
+      if (!value.trim()) {
+        return 'Email is required.';
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim().toLowerCase())) {
+        return 'Enter a valid email address.';
+      }
+    }
+
+    if (fieldName === 'password') {
+      if (isForgotPassword) {
+        return '';
+      }
+
+      if (!value.trim()) {
+        return 'Password is required.';
+      }
+
+      if (isRegister) {
+        if (value.length < 8) {
+          return 'Password must be at least 8 characters.';
+        }
+
+        if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) {
+          return 'Password must contain at least one letter and one number.';
+        }
+      }
+    }
+
+    if (fieldName === 'confirmPassword') {
+      if (!isRegister) {
+        return '';
+      }
+
+      if (!value.trim()) {
+        return 'Please confirm your password.';
+      }
+
+      if (value !== formValue.password) {
+        return 'Password confirmation does not match.';
+      }
+    }
+
+    return '';
+  };
+
+  const validateForm = () => {
+    const nextErrors = {};
+    const fieldsToValidate = isForgotPassword
+      ? ['email']
+      : isRegister
+        ? ['name', 'username', 'email', 'password', 'confirmPassword']
+        : ['username', 'password'];
+
+    fieldsToValidate.forEach((fieldName) => {
+      const fieldError = validateField(fieldName, form);
+
+      if (fieldError) {
+        nextErrors[fieldName] = fieldError;
+      }
+    });
+
+    setFieldErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
+    setFieldErrors((current) => ({ ...current, [name]: '' }));
     setError('');
+    setSuccessMessage('');
+  };
+
+  const handleBlur = (event) => {
+    const { name } = event.target;
+    const nextError = validateField(name, form);
+
+    setFieldErrors((current) => ({
+      ...current,
+      [name]: nextError,
+    }));
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    if (isForgotPassword) {
-      if (!form.email.trim()) {
-        setError('Please enter your email first.');
-        return;
-      }
-
-      setError('');
-      setSuccessMessage(
-        'Reset password link has been sent to your email. Please check your inbox.',
-      );
-      setForm(initialFields);
+    if (!validateForm()) {
+      setError('Please review the highlighted fields.');
       return;
     }
 
-    if (
-      !form.username.trim() ||
-      !form.password.trim() ||
-      (isRegister && (!form.name.trim() || !form.email.trim()))
-    ) {
-      setError('Please fill in all required fields.');
+    const response = onSubmit({
+      mode,
+      name: form.name.trim(),
+      username: form.username.trim(),
+      email: form.email.trim(),
+      password: form.password,
+    });
+
+    if (response?.ok === false) {
+      setError(response.error || 'We could not complete your request.');
       return;
     }
 
     setError('');
-    onSubmit({
-      name: isRegister ? form.name.trim() : form.username.trim(),
-      username: form.username.trim(),
-      email: isRegister ? form.email.trim() : '',
-    });
+    setSuccessMessage(response?.successMessage || '');
     setForm(initialFields);
+    setFieldErrors({});
   };
 
   return (
     <section className="auth-shell">
       <div className="auth-highlight">
         <span className="mini-badge">Smart Grocery</span>
-        <h1>{isRegister ? 'Create your FreshCart account' : 'Welcome back to FreshCart'}</h1>
+        <h1>
+          {isForgotPassword
+            ? 'Recover access to FreshCart'
+            : isRegister
+              ? 'Create your FreshCart account'
+              : 'Welcome back to FreshCart'}
+        </h1>
         <p>
           Shop groceries faster with smart recommendations, a simple wishlist, and
           clean checkout flows.
@@ -100,6 +227,22 @@ function AuthForm({ mode, onSwitchMode, onSubmit }) {
       </div>
 
       <form className="auth-card" onSubmit={handleSubmit} autoComplete="off">
+        <input
+          className="autofill-decoy"
+          type="text"
+          name="auth-username"
+          autoComplete="username"
+          tabIndex="-1"
+          aria-hidden="true"
+        />
+        <input
+          className="autofill-decoy"
+          type="password"
+          name="auth-password"
+          autoComplete="current-password"
+          tabIndex="-1"
+          aria-hidden="true"
+        />
         <p className="section-eyebrow">
           {isForgotPassword ? 'Reset Password' : isRegister ? 'Register' : 'Login'}
         </p>
@@ -114,8 +257,8 @@ function AuthForm({ mode, onSwitchMode, onSubmit }) {
           {isForgotPassword
             ? 'Enter your email and we will simulate sending a reset link for your account.'
             : isRegister
-            ? 'No backend needed here, just a simple local auth UI.'
-            : 'Sign in with your username and password to continue shopping smarter.'}
+              ? 'Create a local account to save your cart, wishlist, and checkout progress on this browser.'
+              : 'Sign in with your username or email to continue shopping smarter.'}
         </p>
 
         {isRegister ? (
@@ -126,23 +269,42 @@ function AuthForm({ mode, onSwitchMode, onSubmit }) {
               type="text"
               value={form.name}
               onChange={handleChange}
+              onBlur={handleBlur}
+              onFocus={() => setAllowManualEntry(true)}
               placeholder="Enter your full name"
               autoComplete="off"
+              readOnly={!allowManualEntry}
             />
+            {fieldErrors.name ? (
+              <span className="field-feedback error">{fieldErrors.name}</span>
+            ) : null}
           </label>
         ) : null}
 
         {!isForgotPassword ? (
           <label className="field-group">
-            <span>Username</span>
+            <span>{isRegister ? 'Username' : 'Username or Email'}</span>
             <input
               name="username"
               type="text"
               value={form.username}
               onChange={handleChange}
-              placeholder="Enter your username"
+              onBlur={handleBlur}
+              onFocus={() => setAllowManualEntry(true)}
+              placeholder={
+                isRegister ? 'Choose a username' : 'Enter your username or email'
+              }
               autoComplete="off"
+              readOnly={!allowManualEntry}
             />
+            {isRegister ? (
+              <span className="field-hint">
+                Use 3-20 lowercase letters, numbers, dots, or underscores.
+              </span>
+            ) : null}
+            {fieldErrors.username ? (
+              <span className="field-feedback error">{fieldErrors.username}</span>
+            ) : null}
           </label>
         ) : null}
 
@@ -154,10 +316,16 @@ function AuthForm({ mode, onSwitchMode, onSubmit }) {
               type="email"
               value={form.email}
               onChange={handleChange}
+              onBlur={handleBlur}
+              onFocus={() => setAllowManualEntry(true)}
               placeholder="Enter your email"
               autoComplete="off"
               inputMode="email"
+              readOnly={!allowManualEntry}
             />
+            {fieldErrors.email ? (
+              <span className="field-feedback error">{fieldErrors.email}</span>
+            ) : null}
           </label>
         ) : null}
 
@@ -170,8 +338,11 @@ function AuthForm({ mode, onSwitchMode, onSubmit }) {
                 type={showPassword ? 'text' : 'password'}
                 value={form.password}
                 onChange={handleChange}
+                onBlur={handleBlur}
+                onFocus={() => setAllowManualEntry(true)}
                 placeholder="Enter your password"
                 autoComplete="new-password"
+                readOnly={!allowManualEntry}
               />
               <button
                 className="password-toggle"
@@ -185,6 +356,44 @@ function AuthForm({ mode, onSwitchMode, onSubmit }) {
                 />
               </button>
             </div>
+            {isRegister ? (
+              <div className="password-checklist">
+                <span className={passwordChecks.length ? 'is-valid' : ''}>
+                  At least 8 characters
+                </span>
+                <span className={passwordChecks.letter ? 'is-valid' : ''}>
+                  Contains a letter
+                </span>
+                <span className={passwordChecks.number ? 'is-valid' : ''}>
+                  Contains a number
+                </span>
+              </div>
+            ) : null}
+            {fieldErrors.password ? (
+              <span className="field-feedback error">{fieldErrors.password}</span>
+            ) : null}
+          </label>
+        ) : null}
+
+        {isRegister ? (
+          <label className="field-group">
+            <span>Confirm Password</span>
+            <input
+              name="confirmPassword"
+              type={showPassword ? 'text' : 'password'}
+              value={form.confirmPassword}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              onFocus={() => setAllowManualEntry(true)}
+              placeholder="Repeat your password"
+              autoComplete="new-password"
+              readOnly={!allowManualEntry}
+            />
+            {fieldErrors.confirmPassword ? (
+              <span className="field-feedback error">
+                {fieldErrors.confirmPassword}
+              </span>
+            ) : null}
           </label>
         ) : null}
 

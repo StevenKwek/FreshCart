@@ -393,6 +393,17 @@ img {
   gap: 14px;
 }
 
+.autofill-decoy {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .field-group {
   display: grid;
   gap: 8px;
@@ -401,6 +412,20 @@ img {
 .field-group span {
   font-weight: 700;
   color: #244632;
+}
+
+.field-hint,
+.field-feedback {
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.field-hint {
+  color: #67806d;
+}
+
+.field-feedback.error {
+  color: #b14545;
 }
 
 .field-group input,
@@ -445,6 +470,21 @@ img {
 .password-toggle-icon svg {
   width: 18px;
   height: 18px;
+}
+
+.password-checklist {
+  display: grid;
+  gap: 6px;
+}
+
+.password-checklist span {
+  color: #7b8f80;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.password-checklist span.is-valid {
+  color: #1f7746;
 }
 
 .field-group input:focus,
@@ -980,7 +1020,8 @@ img {
 .profile-action-list {
   display: grid;
   gap: 2px;
-  margin-top: 12px;
+  margin-top: 20px;
+  margin-bottom: 20px;
 }
 
 .profile-action-buttons {
@@ -1441,6 +1482,14 @@ body.theme-dark {
   color: #dcefe1;
 }
 
+.app-shell.dark-theme .field-hint {
+  color: #9db3a4;
+}
+
+.app-shell.dark-theme .field-feedback.error {
+  color: #ffb2b2;
+}
+
 .app-shell.dark-theme .field-group input,
 .app-shell.dark-theme .search-box input,
 .app-shell.dark-theme .password-input-wrap input {
@@ -1453,6 +1502,14 @@ body.theme-dark {
 .app-shell.dark-theme .search-box input:focus {
   border-color: rgba(89, 186, 126, 0.55);
   box-shadow: 0 0 0 4px rgba(48, 135, 78, 0.18);
+}
+
+.app-shell.dark-theme .password-checklist span {
+  color: #91a699;
+}
+
+.app-shell.dark-theme .password-checklist span.is-valid {
+  color: #a9ebbe;
 }
 
 .app-shell.dark-theme .secondary-button,

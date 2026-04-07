@@ -7,15 +7,23 @@ import Toast from './components/Toast';
 import { paymentMethods } from './constants/paymentMethods';
 import { products as initialProducts } from './data/products';
 import {
+  createLocalAccount,
   createInventorySeedVersion,
+  createSessionUser,
+  findAccountByIdentifier,
   getInitialTheme,
+  getStoredAccounts,
   getScopedStoredValue,
   getStoredValue,
+  getUserStorageKey,
   mergeLegacyScopedValue,
+  normalizeUsernameInput,
   normalizeUser,
+  normalizeEmail,
   syncCartWithInventory,
   syncInventoryWithSeed,
   syncWishlistWithInventory,
+  verifyLocalPassword,
 } from './utils/appState';
 import { getStockStatus } from './utils/stock';
 
@@ -24,6 +32,7 @@ const inventorySeedVersion = createInventorySeedVersion(initialProducts);
 
 function App() {
   const initialUserState = normalizeUser(getStoredValue('freshcart-user', null));
+  const initialAccountsState = getStoredAccounts();
   const initialInventoryState = syncInventoryWithSeed(
     getStoredValue('freshcart-inventory', initialProducts),
     initialProducts,
@@ -46,6 +55,7 @@ function App() {
   const [currentView, setCurrentView] = useState('landing');
   const [authMode, setAuthMode] = useState('login');
   const [user, setUser] = useState(() => initialUserState);
+  const [accounts, setAccounts] = useState(() => initialAccountsState);
   const [inventory, setInventory] = useState(() => initialInventoryState);
   const [cartByUser, setCartByUser] = useState(() => initialCartByUserState);
   const [wishlistByUser, setWishlistByUser] = useState(
@@ -69,6 +79,9 @@ function App() {
   const [spendingByUser, setSpendingByUser] = useState(() =>
     getStoredValue('freshcart-spending-by-user', {}),
   );
+  const [purchaseHistoryByUser, setPurchaseHistoryByUser] = useState(() =>
+    getStoredValue('freshcart-purchases-by-user', {}),
+  );
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(() =>
     getScopedStoredValue(initialPaymentByUserState, initialUserState, ''),
   );
@@ -86,6 +99,10 @@ function App() {
   }, [user]);
 
   useEffect(() => {
+    window.localStorage.setItem('freshcart-auth-accounts', JSON.stringify(accounts));
+  }, [accounts]);
+
+  useEffect(() => {
     window.localStorage.setItem('freshcart-inventory', JSON.stringify(inventory));
   }, [inventory]);
 
@@ -95,6 +112,13 @@ function App() {
       JSON.stringify(spendingByUser),
     );
   }, [spendingByUser]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      'freshcart-purchases-by-user',
+      JSON.stringify(purchaseHistoryByUser),
+    );
+  }, [purchaseHistoryByUser]);
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -292,14 +316,88 @@ function App() {
     setTheme((current) => (current === 'dark' ? 'light' : 'dark'));
   };
 
-  const handleAuthSuccess = (nextUser) => {
-    setUser(normalizeUser(nextUser));
+  const handleAuthSubmit = ({ mode, name, username, email, password }) => {
+    if (mode === 'register') {
+      const existingUsername = accounts.find(
+        (account) => account.username === normalizeUsernameInput(username),
+      );
+
+      if (existingUsername) {
+        return {
+          ok: false,
+          error: 'Username is already in use. Please choose another one.',
+        };
+      }
+
+      const normalizedEmail = normalizeEmail(email);
+      const existingEmail = accounts.find((account) => account.email === normalizedEmail);
+
+      if (existingEmail) {
+        return {
+          ok: false,
+          error: 'Email is already registered. Try logging in instead.',
+        };
+      }
+
+      const nextAccount = createLocalAccount({
+        name,
+        username,
+        email: normalizedEmail,
+        password,
+      });
+
+      setAccounts((current) => [...current, nextAccount]);
+      setUser(createSessionUser(nextAccount));
+      navigateTo('home');
+      showToast(`Welcome, ${nextAccount.username}!`);
+
+      return { ok: true };
+    }
+
+    if (mode === 'forgot') {
+      const account = accounts.find((entry) => entry.email === normalizeEmail(email));
+
+      if (!account) {
+        return {
+          ok: false,
+          error: 'We could not find an account with that email.',
+        };
+      }
+
+      return {
+        ok: true,
+        resetForm: true,
+        successMessage: `Reset link simulation sent to ${account.email}. Use your existing password for local testing.`,
+      };
+    }
+
+    const account = findAccountByIdentifier(accounts, username);
+
+    if (!account) {
+      return {
+        ok: false,
+        error: 'Account not found. Check your username or email, or create a new account.',
+      };
+    }
+
+    if (!verifyLocalPassword(account, password)) {
+      return {
+        ok: false,
+        error: 'Wrong password. Please try again.',
+      };
+    }
+
+    setUser(createSessionUser(account));
     navigateTo('home');
-    showToast(`Welcome, ${nextUser.username || nextUser.name}!`);
+    showToast(`Welcome back, ${account.username}!`);
+
+    return { ok: true };
   };
 
   const username = (user?.username || 'guest').split('@')[0];
+  const userKey = getUserStorageKey(user);
   const activeSpending = spendingByUser[username] || 0;
+  const purchaseHistory = getScopedStoredValue(purchaseHistoryByUser, userKey, []);
   const activePaymentMethod = paymentMethods
     .flatMap((group) => group.options)
     .find((option) => option.id === selectedPaymentMethod);
@@ -400,7 +498,28 @@ function App() {
       return;
     }
 
+    if (!userKey) {
+      showToast('Please login first before placing an order.', 'warning');
+      return;
+    }
+
     const checkoutTotal = totalPrice;
+    const orderRecord = {
+      id: `order-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      paymentMethod: activePaymentMethod?.label || selectedPaymentMethod,
+      totalItems,
+      totalPrice: checkoutTotal,
+      items: cartItems.map((item) => ({
+        productId: item.id,
+        name: item.name,
+        category: item.category,
+        image: item.image,
+        price: item.price,
+        quantity: item.quantity,
+        unit: item.unit,
+      })),
+    };
 
     setInventory((current) =>
       current.map((product) => {
@@ -418,6 +537,10 @@ function App() {
     setSpendingByUser((current) => ({
       ...current,
       [username]: (current[username] || 0) + checkoutTotal,
+    }));
+    setPurchaseHistoryByUser((current) => ({
+      ...current,
+      [userKey]: [orderRecord, ...(current[userKey] || [])],
     }));
     setCart([]);
     setSelectedPaymentMethod('');
@@ -939,6 +1062,13 @@ function App() {
             </div>
             <div className="summary-row">
               <span className="icon-text">
+                <AppIcon type="products" className="summary-icon" />
+                Riwayat pembelian
+              </span>
+              <strong>{purchaseHistory.length} order</strong>
+            </div>
+            <div className="summary-row">
+              <span className="icon-text">
                 <AppIcon type="delivery" className="summary-icon" />
                 Status akun
               </span>
@@ -990,7 +1120,7 @@ function App() {
               setAuthMode(mode);
               navigateTo(mode);
             }}
-            onSubmit={handleAuthSuccess}
+            onSubmit={handleAuthSubmit}
           />
         );
       }
