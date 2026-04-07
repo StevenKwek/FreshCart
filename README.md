@@ -13,12 +13,24 @@ FreshCart adalah aplikasi web grocery berbasis React dengan Firebase Auth, Cloud
 ## Fitur
 
 - Login, register, dan reset password dengan Firebase Auth
-- Katalog produk dengan search dan filter kategori
-- Wishlist, cart, metode pembayaran, dan riwayat pembelian tersimpan per user
-- Checkout dengan API server-side untuk membuat order dan mengurangi stok
-- Profile page dengan ringkasan akun dan order
+- Login bisa menggunakan username atau email
+- Katalog produk dengan search, filter kategori, dan detail produk
+- Wishlist, cart, metode pembayaran, dan riwayat pembelian tersimpan per user di Firestore
+- Checkout dengan API server-side untuk membuat order, mengurangi stok, dan menyimpan status pesanan
+- Profile page dengan ringkasan akun, order history, dan status order
+- Panel admin sederhana untuk melihat order masuk dan mengubah status menjadi `accepted`, `processing`, `completed`, atau `cancelled`
+- Footer informatif dan layout responsif untuk mobile, tablet, dan desktop
 - Dark mode
-- Responsive layout untuk mobile, tablet, dan desktop
+
+## Integrasi Backend
+
+- Firebase Authentication untuk register, login, logout, dan reset password
+- Cloud Firestore untuk menyimpan user profile, inventory produk, wishlist, cart, payment method, spending total, dan order history
+- Firebase Admin SDK untuk proses server-side yang butuh akses aman ke Firestore
+- Vercel Functions:
+  - `api/checkout.js` untuk checkout, pengurangan stok, dan pembuatan order
+  - `api/orders.js` untuk mengambil daftar order admin dan update status order
+- Firestore Rules untuk membatasi akses data user dan inventory dari client
 
 ## Tech Stack
 
@@ -41,18 +53,13 @@ FreshCart adalah aplikasi web grocery berbasis React dengan Firebase Auth, Cloud
 ```bash
 npm install
 npm run seed:products
-npm run dev
-```
-
-Untuk checkout API di local, ada dua opsi:
-
-```bash
-# Opsi cepat: fallback ke Firestore transaction langsung dari client
-npm run dev
-
-# Opsi lengkap: jalankan seperti environment Vercel
 npx vercel dev
 ```
+
+Catatan local:
+
+- `npm run dev` cukup untuk melihat frontend dan auth flow
+- `npx vercel dev` dipakai untuk test full flow termasuk checkout API dan admin order endpoint
 
 ## Environment Variables
 
@@ -100,6 +107,8 @@ npm run seed:products
 
 - `products/{productId}`
 - `users/{uid}`
+- `usernames/{username}`
+- `orders/{orderId}`
 
 Field penting user:
 
@@ -111,6 +120,18 @@ Field penting user:
 - `selectedPaymentMethod`
 - `spendingTotal`
 - `purchaseHistory`
+
+Field penting order:
+
+- `id`
+- `userId`
+- `userEmail`
+- `paymentMethod`
+- `status`
+- `totalItems`
+- `totalPrice`
+- `items`
+- `createdAt`
 
 ## Script
 
@@ -128,12 +149,13 @@ npm run seed:products
 3. Isi semua env Firebase client dan admin di dashboard Vercel
 4. Deploy
 
-Checkout API menggunakan file `api/checkout.js`, jadi env admin wajib tersedia di Vercel.
+Checkout API dan admin order endpoint menggunakan file `api/checkout.js` dan `api/orders.js`, jadi env admin wajib tersedia di Vercel.
 
 ## Catatan
 
-- Kalau env Firebase belum diisi, app masih punya fallback lokal untuk pengembangan
-- Untuk sinkronisasi stok antar device, Firestore products harus sudah di-seed
+- Untuk sinkronisasi stok dan data user antar device, Firestore products harus sudah di-seed
+- Agar checkout dan panel admin berjalan di local, gunakan `npx vercel dev`
+- Admin saat ini ditentukan dari akun yang memiliki username `admin`
 - Rule Firestore yang ada masih versi dasar dan bisa diperketat lagi sesuai kebutuhan produksi
 
 ## Author
