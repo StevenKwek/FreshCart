@@ -1540,6 +1540,69 @@ img {
   text-align: left;
 }
 
+.payment-method-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.payment-method-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 14px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  background: rgba(29, 124, 69, 0.08);
+  color: #1f7746;
+  flex-shrink: 0;
+}
+
+.payment-method-logo.gopay {
+  background: rgba(0, 129, 210, 0.12);
+  color: #007bc8;
+}
+
+.payment-method-logo.ovo {
+  background: rgba(76, 29, 149, 0.12);
+  color: #5b21b6;
+}
+
+.payment-method-logo.dana {
+  background: rgba(0, 120, 255, 0.12);
+  color: #0b68d0;
+}
+
+.payment-method-logo.shopeepay {
+  background: rgba(234, 88, 12, 0.12);
+  color: #d96504;
+}
+
+.payment-method-logo.bca {
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+}
+
+.payment-method-logo.mandiri {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b87700;
+}
+
+.payment-method-logo.bni {
+  background: rgba(249, 115, 22, 0.14);
+  color: #c55b06;
+}
+
+.payment-method-logo.bri {
+  background: rgba(37, 99, 235, 0.12);
+  color: #1e40af;
+}
+
 .payment-method-card.active {
   border-color: rgba(29, 124, 69, 0.45);
   background: rgba(235, 249, 238, 0.98);
@@ -1825,6 +1888,51 @@ body.theme-dark {
 
 .app-shell.dark-theme .payment-method-card.active .payment-method-note {
   color: #cae7d3;
+}
+
+.app-shell.dark-theme .payment-method-logo {
+  background: rgba(67, 120, 86, 0.18);
+  color: #9ee2b8;
+}
+
+.app-shell.dark-theme .payment-method-logo.gopay {
+  background: rgba(0, 129, 210, 0.2);
+  color: #8fd8ff;
+}
+
+.app-shell.dark-theme .payment-method-logo.ovo {
+  background: rgba(91, 33, 182, 0.24);
+  color: #cfb7ff;
+}
+
+.app-shell.dark-theme .payment-method-logo.dana {
+  background: rgba(11, 104, 208, 0.22);
+  color: #a8d2ff;
+}
+
+.app-shell.dark-theme .payment-method-logo.shopeepay {
+  background: rgba(217, 101, 4, 0.22);
+  color: #ffd1a8;
+}
+
+.app-shell.dark-theme .payment-method-logo.bca {
+  background: rgba(29, 78, 216, 0.24);
+  color: #b9d2ff;
+}
+
+.app-shell.dark-theme .payment-method-logo.mandiri {
+  background: rgba(184, 119, 0, 0.24);
+  color: #ffd890;
+}
+
+.app-shell.dark-theme .payment-method-logo.bni {
+  background: rgba(197, 91, 6, 0.24);
+  color: #ffc59b;
+}
+
+.app-shell.dark-theme .payment-method-logo.bri {
+  background: rgba(30, 64, 175, 0.24);
+  color: #b8cbff;
 }
 
 .app-shell.dark-theme .stat-card span {

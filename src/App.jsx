@@ -1408,7 +1408,15 @@ function App() {
                         }`}
                         onClick={() => setSelectedPaymentMethod(option.id)}
                       >
-                        <span className="payment-method-name">{option.label}</span>
+                        <div className="payment-method-top">
+                          <span
+                            className={`payment-method-logo ${option.brandClass || ''}`}
+                            aria-hidden="true"
+                          >
+                            {option.logoText || option.label}
+                          </span>
+                          <span className="payment-method-name">{option.label}</span>
+                        </div>
                         <span className="payment-method-note">{option.note}</span>
                       </button>
                     ))}
