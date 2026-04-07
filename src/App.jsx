@@ -3,6 +3,7 @@ import AuthForm from './components/AuthForm';
 import AppIcon from './components/AppIcon';
 import Footer from './components/Footer';
 import Navbar from './components/Navbar';
+import PaymentLogo from './components/PaymentLogo';
 import ProductCard from './components/ProductCard';
 import Toast from './components/Toast';
 import { paymentMethods } from './constants/paymentMethods';
@@ -1409,12 +1410,7 @@ function App() {
                         onClick={() => setSelectedPaymentMethod(option.id)}
                       >
                         <div className="payment-method-top">
-                          <span
-                            className={`payment-method-logo ${option.brandClass || ''}`}
-                            aria-hidden="true"
-                          >
-                            {option.logoText || option.label}
-                          </span>
+                          <PaymentLogo methodId={option.id} />
                           <span className="payment-method-name">{option.label}</span>
                         </div>
                         <span className="payment-method-note">{option.note}</span>
