@@ -1499,6 +1499,11 @@ img {
   color: #163728;
 }
 
+.pivot-chart-copy {
+  margin: 8px 0 0;
+  color: #68806e;
+}
+
 .pivot-year-switcher {
   display: flex;
   align-items: center;
@@ -1533,54 +1538,108 @@ img {
   border: 1px solid rgba(147, 173, 151, 0.18);
 }
 
-.pivot-chart-bars {
+.pivot-line-chart-shell {
+  position: relative;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18px, 1fr));
-  align-items: end;
-  gap: 8px;
-  min-height: 170px;
+  gap: 12px;
 }
 
-.pivot-summary-bars {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  min-height: 240px;
-}
-
-.pivot-chart-bar-item {
-  display: grid;
-  gap: 10px;
-  align-items: end;
-}
-
-.pivot-summary-item {
-  justify-items: center;
-}
-
-.pivot-chart-bar-value {
-  font-weight: 700;
-  color: #1b7d47;
-  text-align: center;
-  line-height: 1.4;
-}
-
-.pivot-chart-bar {
+.pivot-line-chart {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  min-height: 2px;
-  border-radius: 999px 999px 6px 6px;
-  background: linear-gradient(180deg, #53c47c 0%, #1d7c45 100%);
-  box-shadow: 0 10px 22px rgba(34, 139, 72, 0.16);
+  height: auto;
+  overflow: visible;
 }
 
-.pivot-chart-bar-item span {
+.pivot-line-grid {
+  stroke: rgba(118, 148, 126, 0.18);
+  stroke-width: 1;
+}
+
+.pivot-line-grid-label {
+  fill: #7b9081;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pivot-line-area {
+  fill: url(#pivot-chart-fill);
+}
+
+.pivot-line-stroke {
+  fill: none;
+  stroke: #5d51ff;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 10px 24px rgba(93, 81, 255, 0.18));
+}
+
+.pivot-line-marker {
+  stroke: rgba(93, 81, 255, 0.24);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 5;
+}
+
+.pivot-line-point {
+  fill: #ffffff;
+  stroke: #5d51ff;
+  stroke-width: 3;
+}
+
+.pivot-chart-xlabels {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 6px;
   color: #68806e;
-  font-size: 0.76rem;
-  text-align: center;
-  word-break: break-word;
+  font-size: 0.78rem;
 }
 
-.pivot-chart-bar-item strong {
+.pivot-chart-xlabels span {
+  text-align: center;
+}
+
+.pivot-chart-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: #68806e;
+  font-size: 0.88rem;
+}
+
+.pivot-chart-caption strong {
   color: #163728;
+}
+
+.pivot-chart-tooltip {
+  position: absolute;
+  z-index: 2;
+  min-width: 120px;
+  max-width: 160px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(147, 173, 151, 0.18);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 38px rgba(15, 34, 23, 0.12);
+  transform: translate(-50%, -115%);
+  pointer-events: none;
+}
+
+.pivot-chart-tooltip span {
+  display: block;
+  color: #68806e;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.pivot-chart-tooltip strong {
+  display: block;
+  margin-top: 4px;
+  color: #163728;
+  font-size: 0.95rem;
 }
 
 .analytics-history-card {
@@ -2307,11 +2366,14 @@ body.theme-dark {
 .app-shell.dark-theme .admin-product-meta,
 .app-shell.dark-theme .admin-payment-group-header span,
 .app-shell.dark-theme .admin-payment-option p,
-.app-shell.dark-theme .pivot-chart-bar-item span,
 .app-shell.dark-theme .analytics-order-copy span,
 .app-shell.dark-theme .analytics-order-meta,
 .app-shell.dark-theme .pivot-section-header,
-.app-shell.dark-theme .analytics-calendar-field input {
+.app-shell.dark-theme .analytics-calendar-field input,
+.app-shell.dark-theme .pivot-chart-copy,
+.app-shell.dark-theme .pivot-chart-xlabels,
+.app-shell.dark-theme .pivot-chart-caption,
+.app-shell.dark-theme .pivot-line-grid-label {
   color: #9db3a4;
 }
 
@@ -2334,8 +2396,22 @@ body.theme-dark {
 .app-shell.dark-theme .analytics-order-copy strong,
 .app-shell.dark-theme .pivot-section-header strong,
 .app-shell.dark-theme .pivot-chart-header h2,
-.app-shell.dark-theme .pivot-chart-bar-item strong,
+.app-shell.dark-theme .pivot-chart-caption strong,
 .app-shell.dark-theme .pivot-year-switcher strong {
+  color: #edf6ef;
+}
+
+.app-shell.dark-theme .pivot-chart-tooltip {
+  background: rgba(13, 20, 15, 0.96);
+  border-color: rgba(117, 153, 130, 0.18);
+  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.34);
+}
+
+.app-shell.dark-theme .pivot-chart-tooltip span {
+  color: #9db3a4;
+}
+
+.app-shell.dark-theme .pivot-chart-tooltip strong {
   color: #edf6ef;
 }
 
@@ -2343,13 +2419,22 @@ body.theme-dark {
   background: rgba(117, 153, 130, 0.16);
 }
 
-.app-shell.dark-theme .pivot-chart-bar {
-  background: linear-gradient(180deg, #86d1a1 0%, #1d7c45 100%);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22);
+.app-shell.dark-theme .pivot-line-grid {
+  stroke: rgba(117, 153, 130, 0.18);
 }
 
-.app-shell.dark-theme .pivot-chart-bar-value {
-  color: #86d1a1;
+.app-shell.dark-theme .pivot-line-stroke {
+  stroke: #9a90ff;
+  filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.24));
+}
+
+.app-shell.dark-theme .pivot-line-point {
+  fill: #132019;
+  stroke: #9a90ff;
+}
+
+.app-shell.dark-theme .pivot-line-marker {
+  stroke: rgba(154, 144, 255, 0.32);
 }
 
 .app-shell.dark-theme .analytics-calendar-field input {
@@ -2924,11 +3009,6 @@ body.theme-dark {
     justify-items: start;
   }
 
-  .pivot-summary-bars {
-    grid-template-columns: 1fr;
-    min-height: auto;
-  }
-
   .admin-product-meta {
     justify-content: flex-start;
   }
@@ -3089,6 +3169,10 @@ body.theme-dark {
   }
 
   .analytics-control-row {
+    align-items: flex-start;
+  }
+
+  .pivot-chart-caption {
     align-items: flex-start;
   }
 

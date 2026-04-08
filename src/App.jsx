@@ -60,12 +60,8 @@ const dateTimeFormatter = new Intl.DateTimeFormat('id-ID', {
   hour: '2-digit',
   minute: '2-digit',
 });
-const monthFormatter = new Intl.DateTimeFormat('id-ID', {
-  month: 'long',
-  year: 'numeric',
-});
-const yearFormatter = new Intl.DateTimeFormat('id-ID', {
-  year: 'numeric',
+const monthShortFormatter = new Intl.DateTimeFormat('id-ID', {
+  month: 'short',
 });
 const inventorySeedVersion = createInventorySeedVersion(initialProducts);
 const landingFeatureHighlights = [
@@ -125,8 +121,6 @@ const isSameDay = (left, right) =>
 const isSameMonth = (left, right) =>
   left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth();
 
-const isSameYear = (left, right) => left.getFullYear() === right.getFullYear();
-
 const formatDateInputValue = (date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -144,6 +138,28 @@ const getOrdersForDateMatch = (orders, matcher) =>
 
     return matcher(orderDate);
   });
+
+const buildSmoothLinePath = (points) => {
+  if (points.length === 0) {
+    return '';
+  }
+
+  if (points.length === 1) {
+    return `M ${points[0].x} ${points[0].y}`;
+  }
+
+  let path = `M ${points[0].x} ${points[0].y}`;
+
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const current = points[index];
+    const next = points[index + 1];
+    const controlX = (current.x + next.x) / 2;
+
+    path += ` C ${controlX} ${current.y}, ${controlX} ${next.y}, ${next.x} ${next.y}`;
+  }
+
+  return path;
+};
 
 const getOrderStatusMeta = (status) => {
   switch (status) {
@@ -236,6 +252,7 @@ function App() {
     getScopedStoredValue(initialPaymentByUserState, initialUserState, ''),
   );
   const [statsAnchorDate, setStatsAnchorDate] = useState(() => new Date());
+  const [chartYear, setChartYear] = useState(() => new Date().getFullYear());
   const [theme, setTheme] = useState(getInitialTheme);
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [previousView, setPreviousView] = useState('home');
@@ -902,55 +919,77 @@ function App() {
   const activePaymentMethod = paymentMethodGroups
     .flatMap((group) => group.options)
     .find((option) => option.id === selectedPaymentMethod);
-  const selectedDaySpend = purchaseHistory
-    .filter((order) => isSameDay(new Date(order.createdAt), statsAnchorDate))
-    .reduce((sum, order) => sum + Number(order.totalPrice || 0), 0);
-  const selectedMonthSpend = purchaseHistory
-    .filter((order) => isSameMonth(new Date(order.createdAt), statsAnchorDate))
-    .reduce((sum, order) => sum + Number(order.totalPrice || 0), 0);
-  const selectedYearSpend = purchaseHistory
-    .filter((order) => isSameYear(new Date(order.createdAt), statsAnchorDate))
-    .reduce((sum, order) => sum + Number(order.totalPrice || 0), 0);
   const filteredStatsOrders = getOrdersForDateMatch(
     purchaseHistory,
     (orderDate) => isSameDay(orderDate, statsAnchorDate),
   );
-  const statsTotal = filteredStatsOrders.reduce(
-    (sum, order) => sum + Number(order.totalPrice || 0),
-    0,
-  );
-  const statsItemsTotal = filteredStatsOrders.reduce(
-    (sum, order) => sum + Number(order.totalItems || 0),
-    0,
-  );
-  const statsAverageSpend = filteredStatsOrders.length
-    ? Math.round(statsTotal / filteredStatsOrders.length)
-    : 0;
   const maxStatsOrderValue = filteredStatsOrders.reduce(
     (max, order) => Math.max(max, Number(order.totalPrice || 0)),
     0,
   );
-  const pivotSummaryRows = [
-    {
-      key: 'daily',
-      label: 'Harian',
-      total: selectedDaySpend,
-      caption: dateTimeFormatter.format(statsAnchorDate).split(',')[0],
-    },
-    {
-      key: 'monthly',
-      label: 'Bulanan',
-      total: selectedMonthSpend,
-      caption: monthFormatter.format(statsAnchorDate),
-    },
-    {
-      key: 'yearly',
-      label: 'Tahunan',
-      total: selectedYearSpend,
-      caption: yearFormatter.format(statsAnchorDate),
-    },
-  ];
-  const pivotSummaryMax = Math.max(...pivotSummaryRows.map((row) => row.total), 0);
+  const overallItemsPurchased = purchaseHistory.reduce(
+    (sum, order) => sum + Number(order.totalItems || 0),
+    0,
+  );
+  const chartSeries = Array.from({ length: 12 }, (_, index) => {
+    const currentDate = new Date(chartYear, index, 1);
+    const total = purchaseHistory
+      .filter((order) => isSameMonth(new Date(order.createdAt), currentDate))
+      .reduce((sum, order) => sum + Number(order.totalPrice || 0), 0);
+
+    return {
+      monthIndex: index,
+      date: currentDate,
+      total,
+    };
+  });
+  const chartMaxTotal = chartSeries.reduce(
+    (max, point) => Math.max(max, point.total),
+    0,
+  );
+  const chartWidth = 760;
+  const chartHeight = 300;
+  const chartPadding = {
+    top: 18,
+    right: 12,
+    bottom: 42,
+    left: 12,
+  };
+  const chartInnerWidth = chartWidth - chartPadding.left - chartPadding.right;
+  const chartInnerHeight = chartHeight - chartPadding.top - chartPadding.bottom;
+  const chartDenominator = Math.max(chartSeries.length - 1, 1);
+  const chartPoints = chartSeries.map((point, index) => {
+    const x =
+      chartPadding.left + (index / chartDenominator) * chartInnerWidth;
+    const y =
+      chartPadding.top +
+      chartInnerHeight -
+      (chartMaxTotal > 0 ? (point.total / chartMaxTotal) * chartInnerHeight : 0);
+
+    return {
+      ...point,
+      x,
+      y,
+    };
+  });
+  const chartLinePath = buildSmoothLinePath(chartPoints);
+  const chartAreaPath = chartPoints.length
+    ? `${chartLinePath} L ${chartPoints[chartPoints.length - 1].x} ${chartHeight - chartPadding.bottom} L ${chartPoints[0].x} ${chartHeight - chartPadding.bottom} Z`
+    : '';
+  const chartGridValues = Array.from({ length: 5 }, (_, index) =>
+    Math.round(((4 - index) / 4) * chartMaxTotal),
+  );
+  const chartSelectedPoint = chartPoints.reduce((bestPoint, currentPoint) => {
+    if (!bestPoint || currentPoint.total >= bestPoint.total) {
+      return currentPoint;
+    }
+
+    return bestPoint;
+  }, null);
+  const chartMonthLabels = chartSeries.map((point) => monthShortFormatter.format(point.date));
+  const chartSelectedPointLabel = chartSelectedPoint
+    ? `${monthShortFormatter.format(chartSelectedPoint.date)} ${chartYear}`
+    : '';
 
   const loadAdminOrders = async () => {
     if (!isAdminUser || !firebaseAuthUser) {
@@ -1508,10 +1547,10 @@ function App() {
         <section className="home-banner analytics-home-banner">
           <div>
             <span className="mini-badge">Spending dashboard</span>
-            <h1>Pantau pengeluaran kamu per hari, bulan, dan tahun dengan lebih rapi.</h1>
+            <h1>Pantau pengeluaran kamu dari satu dashboard yang lebih fokus.</h1>
             <p>
-              Home sekarang fokus ke statistik belanja, jadi kamu bisa lihat pola
-              pengeluaran dan utak-atik periodenya langsung dari dashboard.
+              Home sekarang fokus ke total belanja dan analisis grafik, jadi kamu bisa
+              lihat pola pengeluaran tanpa campuran katalog produk.
             </p>
           </div>
           <div className="stat-grid analytics-stat-grid">
@@ -1519,22 +1558,15 @@ function App() {
               <span className="card-icon-badge">
                 <AppIcon type="wallet" className="content-icon" />
               </span>
-              <strong>Rp {currencyFormatter.format(selectedDaySpend)}</strong>
-              <span>Pengeluaran hari terpilih</span>
+              <strong>Rp {currencyFormatter.format(activeSpending)}</strong>
+              <span>Total pengeluaran keseluruhan</span>
             </div>
             <div className="stat-card">
               <span className="card-icon-badge">
-                <AppIcon type="wallet" className="content-icon" />
+                <AppIcon type="cart" className="content-icon" />
               </span>
-              <strong>Rp {currencyFormatter.format(selectedMonthSpend)}</strong>
-              <span>Pengeluaran bulan terpilih</span>
-            </div>
-            <div className="stat-card">
-              <span className="card-icon-badge">
-                <AppIcon type="wallet" className="content-icon" />
-              </span>
-              <strong>Rp {currencyFormatter.format(selectedYearSpend)}</strong>
-              <span>Pengeluaran tahun terpilih</span>
+              <strong>{overallItemsPurchased}</strong>
+              <span>Total item dibeli</span>
             </div>
           </div>
         </section>
@@ -1548,7 +1580,7 @@ function App() {
                   Analytics Controls
                 </span>
                 <h1>Atur periode statistik</h1>
-                <p>Pilih tanggal acuan, lalu semua total pengeluaran akan ikut menyesuaikan.</p>
+                <p>Pilih tanggal acuan untuk melihat total pengeluaran dan jumlah item di hari itu.</p>
               </div>
             </div>
 
@@ -1578,29 +1610,15 @@ function App() {
                 <span className="card-icon-badge">
                   <AppIcon type="wallet" className="content-icon" />
                 </span>
-                <strong>Rp {currencyFormatter.format(statsTotal)}</strong>
-                <span>Total tanggal terpilih</span>
-              </div>
-              <div className="detail-meta-card analytics-summary-card">
-                <span className="card-icon-badge">
-                  <AppIcon type="products" className="content-icon" />
-                </span>
-                <strong>{filteredStatsOrders.length}</strong>
-                <span>Jumlah order tanggal terpilih</span>
+                <strong>Rp {currencyFormatter.format(activeSpending)}</strong>
+                <span>Total pengeluaran</span>
               </div>
               <div className="detail-meta-card analytics-summary-card">
                 <span className="card-icon-badge">
                   <AppIcon type="cart" className="content-icon" />
                 </span>
-                <strong>{statsItemsTotal}</strong>
-                <span>Total item tanggal terpilih</span>
-              </div>
-              <div className="detail-meta-card analytics-summary-card">
-                <span className="card-icon-badge">
-                  <AppIcon type="spark" className="content-icon" />
-                </span>
-                <strong>Rp {currencyFormatter.format(statsAverageSpend)}</strong>
-                <span>Rata-rata per order tanggal terpilih</span>
+                <strong>{overallItemsPurchased}</strong>
+                <span>Total barang dibeli</span>
               </div>
             </div>
           </div>
@@ -1612,27 +1630,20 @@ function App() {
                   <AppIcon type="products" className="badge-icon" />
                   Pivot Analysis
                 </span>
-                <h2>Chart pengeluaran</h2>
+                <h2>Chart pengeluaran bulanan</h2>
+                <p className="pivot-chart-copy">Data per bulan untuk tahun yang dipilih.</p>
               </div>
               <div className="pivot-year-switcher">
                 <button
                   className="secondary-button"
-                  onClick={() =>
-                    setStatsAnchorDate((current) =>
-                      new Date(current.getFullYear() - 1, current.getMonth(), current.getDate()),
-                    )
-                  }
+                  onClick={() => setChartYear((current) => current - 1)}
                 >
                   ←
                 </button>
-                <strong>{statsAnchorDate.getFullYear()}</strong>
+                <strong>{chartYear}</strong>
                 <button
                   className="secondary-button"
-                  onClick={() =>
-                    setStatsAnchorDate((current) =>
-                      new Date(current.getFullYear() + 1, current.getMonth(), current.getDate()),
-                    )
-                  }
+                  onClick={() => setChartYear((current) => current + 1)}
                 >
                   →
                 </button>
@@ -1641,25 +1652,89 @@ function App() {
 
             <div className="pivot-chart-card">
               <div className="pivot-section-header">
-                <strong>Pivot harian, bulanan, tahunan</strong>
-                <span>Total pengeluaran</span>
+                <strong>Total pengeluaran per bulan</strong>
+                <span>Berdasarkan tahun yang dipilih</span>
               </div>
-              <div className="pivot-chart-bars pivot-summary-bars">
-                {pivotSummaryRows.map((row) => (
-                  <div key={row.key} className="pivot-chart-bar-item pivot-summary-item">
-                    <div className="pivot-chart-bar-value">
-                      Rp {currencyFormatter.format(row.total)}
-                    </div>
-                    <div
-                      className="pivot-chart-bar"
-                      style={{
-                        height: `${pivotSummaryMax > 0 ? Math.max((row.total / pivotSummaryMax) * 100, row.total > 0 ? 10 : 0) : 0}%`,
-                      }}
-                    />
-                    <strong>{row.label}</strong>
-                    <span>{row.caption}</span>
+              <div className="pivot-line-chart-shell">
+                {chartSelectedPoint ? (
+                  <div
+                    className="pivot-chart-tooltip"
+                    style={{
+                      left: `${(chartSelectedPoint.x / chartWidth) * 100}%`,
+                      top: `${(chartSelectedPoint.y / chartHeight) * 100}%`,
+                    }}
+                  >
+                    <span>{chartSelectedPointLabel}</span>
+                    <strong>Rp {currencyFormatter.format(chartSelectedPoint.total)}</strong>
                   </div>
-                ))}
+                ) : null}
+                <svg
+                  className="pivot-line-chart"
+                  viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+                  role="img"
+                  aria-label={`Grafik pengeluaran bulanan tahun ${chartYear}`}
+                >
+                  <defs>
+                    <linearGradient id="pivot-chart-fill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#5d51ff" stopOpacity="0.22" />
+                      <stop offset="100%" stopColor="#5d51ff" stopOpacity="0.02" />
+                    </linearGradient>
+                  </defs>
+                  {chartGridValues.map((value, index) => {
+                    const y = chartPadding.top + (index / 4) * chartInnerHeight;
+
+                    return (
+                      <g key={`${value}-${index}`}>
+                        <line
+                          x1={chartPadding.left}
+                          y1={y}
+                          x2={chartWidth - chartPadding.right}
+                          y2={y}
+                          className="pivot-line-grid"
+                        />
+                        <text
+                          x={chartPadding.left + 6}
+                          y={Math.max(y - 8, chartPadding.top + 12)}
+                          className="pivot-line-grid-label"
+                        >
+                          Rp {currencyFormatter.format(value)}
+                        </text>
+                      </g>
+                    );
+                  })}
+
+                  {chartAreaPath ? <path d={chartAreaPath} className="pivot-line-area" /> : null}
+                  {chartLinePath ? <path d={chartLinePath} className="pivot-line-stroke" /> : null}
+
+                  {chartSelectedPoint ? (
+                    <g>
+                      <line
+                        x1={chartSelectedPoint.x}
+                        y1={chartPadding.top}
+                        x2={chartSelectedPoint.x}
+                        y2={chartHeight - chartPadding.bottom}
+                        className="pivot-line-marker"
+                      />
+                      <circle
+                        cx={chartSelectedPoint.x}
+                        cy={chartSelectedPoint.y}
+                        r="6"
+                        className="pivot-line-point"
+                      />
+                    </g>
+                  ) : null}
+                </svg>
+
+                <div className="pivot-chart-xlabels">
+                  {chartMonthLabels.map((label) => (
+                    <span key={label}>{label}</span>
+                  ))}
+                </div>
+
+                <div className="pivot-chart-caption">
+                  <strong>Bulan</strong>
+                  <span>Gunakan panah kiri-kanan untuk mengganti tahun pada pivot chart.</span>
+                </div>
               </div>
             </div>
           </aside>
@@ -1705,7 +1780,7 @@ function App() {
           ) : (
             <div className="empty-state left compact-empty-state">
               <h3>Belum ada data di periode ini</h3>
-              <p>Coba ganti periodenya ke hari, bulan, atau tahun lain untuk melihat statistik.</p>
+              <p>Coba ganti tanggal acuan untuk melihat pengeluaran pada hari yang berbeda.</p>
             </div>
           )}
         </section>
