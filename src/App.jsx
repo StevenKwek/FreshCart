@@ -965,22 +965,12 @@ function App() {
     visiblePurchaseHistory,
     (orderDate) => isSameDay(orderDate, statsAnchorDate),
   );
+  const statsOrderCount = filteredStatsOrders.length;
   const statsTotal = filteredStatsOrders.reduce(
     (sum, order) => sum + getOrderTotalPrice(order),
     0,
   );
-  const statsItemsTotal = filteredStatsOrders.reduce(
-    (sum, order) => sum + getOrderTotalItems(order),
-    0,
-  );
-  const maxStatsOrderValue = filteredStatsOrders.reduce(
-    (max, order) => Math.max(max, getOrderTotalPrice(order)),
-    0,
-  );
-  const overallItemsPurchased = visiblePurchaseHistory.reduce(
-    (sum, order) => sum + getOrderTotalItems(order),
-    0,
-  );
+  const overallOrderCount = visiblePurchaseHistory.length;
   const chartSeries = Array.from({ length: 12 }, (_, index) => {
     const currentDate = new Date(chartYear, index, 1);
     const total = visiblePurchaseHistory
@@ -1751,8 +1741,8 @@ function App() {
               <span className="card-icon-badge">
                 <AppIcon type="cart" className="content-icon" />
               </span>
-              <strong>{overallItemsPurchased}</strong>
-              <span>Total item dibeli</span>
+              <strong>{overallOrderCount}</strong>
+              <span>Total pesanan tercatat</span>
             </div>
           </div>
         </section>
@@ -1766,7 +1756,7 @@ function App() {
                   Analytics Controls
                 </span>
                 <h1>Atur periode statistik</h1>
-                <p>Pilih tanggal untuk melihat total pengeluaran dan jumlah barang yang dibeli pada hari itu.</p>
+                <p>Pilih tanggal untuk melihat total pengeluaran dan jumlah pesanan pada hari itu.</p>
               </div>
             </div>
 
@@ -1803,8 +1793,8 @@ function App() {
                 <span className="card-icon-badge">
                   <AppIcon type="cart" className="content-icon" />
                 </span>
-                <strong>{statsItemsTotal}</strong>
-                <span>Total barang tanggal terpilih</span>
+                <strong>{statsOrderCount}</strong>
+                <span>Total pesanan tanggal terpilih</span>
               </div>
             </div>
           </div>
@@ -1943,51 +1933,6 @@ function App() {
               </div>
             </div>
           </aside>
-        </section>
-
-        <section className="profile-card profile-section-card analytics-history-card">
-          <div className="section-header compact">
-            <div>
-              <span className="mini-badge">
-                <AppIcon type="delivery" className="badge-icon" />
-                Spending Timeline
-              </span>
-              <h2>Riwayat tanggal terpilih</h2>
-            </div>
-          </div>
-
-          {filteredStatsOrders.length > 0 ? (
-            <div className="analytics-order-list">
-              {filteredStatsOrders.map((order) => {
-                const amount = getOrderTotalPrice(order);
-                const width = maxStatsOrderValue > 0 ? (amount / maxStatsOrderValue) * 100 : 0;
-
-                return (
-                  <article key={order.id} className="analytics-order-card">
-                    <div className="analytics-order-copy">
-                      <strong>{order.id}</strong>
-                      <span>{dateTimeFormatter.format(new Date(order.createdAt))}</span>
-                    </div>
-                    <div className="analytics-order-bar-shell">
-                      <div
-                        className="analytics-order-bar"
-                        style={{ width: `${Math.max(width, 12)}%` }}
-                      />
-                    </div>
-                    <div className="analytics-order-meta">
-                      <span>{getOrderTotalItems(order)} item</span>
-                      <strong>Rp {currencyFormatter.format(amount)}</strong>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="empty-state left compact-empty-state">
-              <h3>Belum ada data di periode ini</h3>
-              <p>Coba ganti tanggal acuan untuk melihat pengeluaran pada hari yang berbeda.</p>
-            </div>
-          )}
         </section>
       </main>
     );
