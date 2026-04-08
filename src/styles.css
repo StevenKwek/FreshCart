@@ -1814,6 +1814,7 @@ img {
 .order-history-top,
 .order-history-meta,
 .order-history-item,
+.order-history-actions,
 .admin-order-actions {
   display: flex;
   align-items: center;
@@ -1895,6 +1896,10 @@ img {
 
 .admin-order-actions {
   justify-content: flex-start;
+}
+
+.order-history-actions {
+  justify-content: flex-end;
 }
 
 .status-action-button {
@@ -2872,7 +2877,8 @@ body.theme-dark {
 
   .order-history-top,
   .order-history-meta,
-  .order-history-item {
+  .order-history-item,
+  .order-history-actions {
     align-items: flex-start;
   }
 

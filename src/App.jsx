@@ -30,6 +30,7 @@ import {
   verifyLocalPassword,
 } from './utils/appState';
 import {
+  cancelUserOrder,
   checkoutWithFirebaseApi,
   createAdminProduct,
   createAdminPaymentMethod,
@@ -192,6 +193,8 @@ const getOrderStatusMeta = (status) => {
   }
 };
 
+const canUserCancelOrderStatus = (status) => status === 'pending' || status === 'accepted';
+
 function App() {
   const useFirebase = firebaseEnabled;
   const initialUserState = normalizeUser(getStoredValue('freshcart-user', null));
@@ -268,6 +271,7 @@ function App() {
   const [isAdminOrdersLoading, setIsAdminOrdersLoading] = useState(false);
   const [adminOrdersError, setAdminOrdersError] = useState('');
   const [orderStatusUpdatingId, setOrderStatusUpdatingId] = useState('');
+  const [userOrderCancellingId, setUserOrderCancellingId] = useState('');
   const [adminProductForm, setAdminProductForm] = useState(createEmptyAdminProductForm);
   const [isAdminProductSaving, setIsAdminProductSaving] = useState(false);
   const [deletingProductId, setDeletingProductId] = useState(null);
@@ -1098,6 +1102,105 @@ function App() {
       );
     } finally {
       setOrderStatusUpdatingId('');
+    }
+  };
+
+  const handleUserOrderCancel = async (order) => {
+    const currentStatus =
+      typeof order?.status === 'string' ? order.status : 'pending';
+
+    if (!canUserCancelOrderStatus(currentStatus)) {
+      showToast('This order can no longer be cancelled.', 'warning');
+      return;
+    }
+
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm('Cancel this order?')
+    ) {
+      return;
+    }
+
+    if (useFirebase) {
+      if (!firebaseAuthUser) {
+        showToast('Please login again to continue.', 'warning');
+        return;
+      }
+
+      setUserOrderCancellingId(order.id);
+
+      try {
+        await cancelUserOrder({
+          firebaseUser: firebaseAuthUser,
+          orderId: order.id,
+        });
+        showToast('Order cancelled successfully.', 'info');
+      } catch (error) {
+        showToast(
+          error instanceof Error ? error.message : 'Failed to cancel order.',
+          'warning',
+        );
+      } finally {
+        setUserOrderCancellingId('');
+      }
+
+      return;
+    }
+
+    if (!userKey) {
+      showToast('Please login again to continue.', 'warning');
+      return;
+    }
+
+    setUserOrderCancellingId(order.id);
+
+    try {
+      const items = Array.isArray(order.items) ? order.items : [];
+      const orderTotal = Number(order.totalPrice || 0);
+      const nextTimestamp = new Date().toISOString();
+
+      setInventory((current) =>
+        current.map((product) => {
+          const cancelledItem = items.find(
+            (item) => Number(item.productId) === Number(product.id),
+          );
+
+          if (!cancelledItem) {
+            return product;
+          }
+
+          return {
+            ...product,
+            stock: product.stock + Number(cancelledItem.quantity || 0),
+          };
+        }),
+      );
+
+      setSpendingByUser((current) => ({
+        ...current,
+        [username]: Math.max((current[username] || 0) - orderTotal, 0),
+      }));
+
+      setPurchaseHistoryByUser((current) => {
+        const scopedHistory = getScopedStoredValue(current, userKey, []);
+
+        return {
+          ...current,
+          [userKey]: scopedHistory.map((entry) =>
+            entry.id === order.id
+              ? {
+                  ...entry,
+                  status: 'cancelled',
+                  updatedAt: nextTimestamp,
+                }
+              : entry,
+          ),
+        };
+      });
+
+      showToast('Order cancelled successfully.', 'info');
+    } finally {
+      setUserOrderCancellingId('');
     }
   };
 
@@ -2875,6 +2978,21 @@ function App() {
                         </div>
                       ))}
                     </div>
+
+                    {canUserCancelOrderStatus(order.status || 'pending') ? (
+                      <div className="order-history-actions">
+                        <button
+                          className="status-action-button"
+                          data-status="cancelled"
+                          onClick={() => handleUserOrderCancel(order)}
+                          disabled={userOrderCancellingId === order.id}
+                        >
+                          {userOrderCancellingId === order.id
+                            ? 'Cancelling...'
+                            : 'Cancel Order'}
+                        </button>
+                      </div>
+                    ) : null}
                   </article>
                 );
               })}

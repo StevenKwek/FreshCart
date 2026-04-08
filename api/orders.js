@@ -52,17 +52,26 @@ const getAuthenticatedUser = async (request) => {
   return adminAuth.verifyIdToken(idToken);
 };
 
-const assertAdminUser = async (decodedToken, adminDb) => {
-  const userSnapshot = await adminDb.collection('users').doc(decodedToken.uid).get();
+const getUserProfileSnapshot = (decodedToken, adminDb) =>
+  adminDb.collection('users').doc(decodedToken.uid).get();
+
+const isAdminUser = async (decodedToken, adminDb) => {
+  const userSnapshot = await getUserProfileSnapshot(decodedToken, adminDb);
   const username =
     typeof userSnapshot.data()?.username === 'string'
       ? userSnapshot.data().username
       : '';
 
-  if (username !== 'admin') {
-    throw new Error('Admin access is required for order management.');
-  }
+  return username === 'admin';
 };
+
+const normalizeOrderStatus = (status) =>
+  typeof status === 'string' && ALLOWED_ORDER_STATUSES.has(status)
+    ? status
+    : 'pending';
+
+const canUserCancelStatus = (status) =>
+  status === 'pending' || status === 'accepted';
 
 const collectUserPurchaseOrders = async (adminDb) => {
   const usersSnapshot = await adminDb.collection('users').get();
@@ -89,10 +98,7 @@ const collectUserPurchaseOrders = async (adminDb) => {
             : typeof userData.email === 'string'
               ? userData.email
               : '',
-        status:
-          typeof order.status === 'string' && ALLOWED_ORDER_STATUSES.has(order.status)
-            ? order.status
-            : 'pending',
+        status: normalizeOrderStatus(order.status),
       });
     });
   });
@@ -115,10 +121,15 @@ export default async function handler(request, response) {
   try {
     const adminDb = getFirebaseAdminDb();
     const decodedToken = await getAuthenticatedUser(request);
-
-    await assertAdminUser(decodedToken, adminDb);
+    const isAdmin = await isAdminUser(decodedToken, adminDb);
 
     if (request.method === 'GET') {
+      if (!isAdmin) {
+        return sendJson(response, 403, {
+          error: 'Admin access is required for order management.',
+        });
+      }
+
       const ordersSnapshot = await adminDb
         .collection('orders')
         .orderBy('createdAt', 'desc')
@@ -171,17 +182,57 @@ export default async function handler(request, response) {
     }
 
     const orderData = orderSnapshot.data();
+    const orderOwnerId =
+      typeof orderData.userId === 'string' && orderData.userId
+        ? orderData.userId
+        : '';
+
+    if (!orderOwnerId) {
+      return sendJson(response, 400, {
+        error: 'Order owner is missing for this record.',
+      });
+    }
+    const currentStatus = normalizeOrderStatus(orderData.status);
+
+    if (!isAdmin) {
+      if (orderOwnerId !== decodedToken.uid) {
+        return sendJson(response, 403, {
+          error: 'You can only manage your own orders.',
+        });
+      }
+
+      if (status !== 'cancelled') {
+        return sendJson(response, 403, {
+          error: 'You are only allowed to cancel your order.',
+        });
+      }
+
+      if (!canUserCancelStatus(currentStatus)) {
+        return sendJson(response, 400, {
+          error: 'This order can no longer be cancelled.',
+        });
+      }
+    }
+
     const nextOrder = {
       ...orderData,
       status,
       updatedAt: new Date().toISOString(),
     };
 
-    const userRef = adminDb.collection('users').doc(orderData.userId);
+    const userRef = adminDb.collection('users').doc(orderOwnerId);
     const userSnapshot = await userRef.get();
     const purchaseHistory = Array.isArray(userSnapshot.data()?.purchaseHistory)
       ? userSnapshot.data().purchaseHistory
       : [];
+    const currentSpendingTotal = Number(userSnapshot.data()?.spendingTotal || 0);
+    const orderTotal = Number(nextOrder.totalPrice || 0);
+    const spendingDelta =
+      currentStatus !== 'cancelled' && status === 'cancelled'
+        ? -orderTotal
+        : currentStatus === 'cancelled' && status !== 'cancelled'
+          ? orderTotal
+          : 0;
     const nextPurchaseHistory = purchaseHistory.map((order) =>
       order.id === orderRef.id
         ? {
@@ -191,13 +242,47 @@ export default async function handler(request, response) {
           }
         : order,
     );
+    const shouldRestock = currentStatus !== 'cancelled' && status === 'cancelled';
 
     await adminDb.runTransaction(async (transaction) => {
       transaction.set(orderRef, nextOrder, { merge: true });
+
+      if (shouldRestock) {
+        const items = Array.isArray(nextOrder.items) ? nextOrder.items : [];
+
+        for (const item of items) {
+          const productId = Number(item.productId);
+          const quantity = Number(item.quantity);
+
+          if (
+            !Number.isFinite(productId) ||
+            productId <= 0 ||
+            !Number.isFinite(quantity) ||
+            quantity <= 0
+          ) {
+            continue;
+          }
+
+          const productRef = adminDb.collection('products').doc(String(productId));
+          const productSnapshot = await transaction.get(productRef);
+
+          if (!productSnapshot.exists) {
+            continue;
+          }
+
+          const currentStock = Number(productSnapshot.data()?.stock || 0);
+
+          transaction.update(productRef, {
+            stock: currentStock + quantity,
+          });
+        }
+      }
+
       transaction.set(
         userRef,
         {
           purchaseHistory: nextPurchaseHistory,
+          spendingTotal: Math.max(currentSpendingTotal + spendingDelta, 0),
           updatedAt: nextOrder.updatedAt,
         },
         { merge: true },
@@ -211,7 +296,11 @@ export default async function handler(request, response) {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to process order request.';
-    const statusCode = message.includes('Admin access') || message.includes('Missing Firebase')
+    const statusCode =
+      message.includes('Admin access') ||
+      message.includes('Missing Firebase') ||
+      message.includes('only manage your own') ||
+      message.includes('only allowed to cancel')
       ? 403
       : 500;
 

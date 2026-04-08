@@ -618,6 +618,32 @@ export const updateAdminOrderStatus = async ({
   return payload.order;
 };
 
+export const cancelUserOrder = async ({ firebaseUser, orderId }) => {
+  if (!firebaseUser) {
+    throw new Error('Please login first.');
+  }
+
+  const idToken = await firebaseUser.getIdToken();
+  const response = await fetch('/api/orders', {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({
+      orderId,
+      status: 'cancelled',
+    }),
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to cancel order.');
+  }
+
+  return payload.order;
+};
+
 export const createAdminProduct = async ({ firebaseUser, product }) => {
   if (!firebaseUser) {
     throw new Error('Please login first.');
