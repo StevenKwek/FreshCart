@@ -194,6 +194,18 @@ const getOrderStatusMeta = (status) => {
 };
 
 const canUserCancelOrderStatus = (status) => status === 'pending' || status === 'accepted';
+const getOrderStatusValue = (order) =>
+  typeof order?.status === 'string' ? order.status.trim().toLowerCase() : 'pending';
+const getOrderTotalPrice = (order) => Number(order?.totalPrice || 0);
+const getOrderTotalItems = (order) => {
+  if (Array.isArray(order?.items) && order.items.length > 0) {
+    return order.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  }
+
+  return Number(order?.totalItems || 0);
+};
+const isCancelledOrder = (order) =>
+  ['cancelled', 'canceled'].includes(getOrderStatusValue(order));
 
 function App() {
   const useFirebase = firebaseEnabled;
@@ -917,40 +929,45 @@ function App() {
   const userKey = useFirebase
     ? firebaseAuthUser?.uid || getUserStorageKey(user)
     : getUserStorageKey(user);
-  const activeSpending = useFirebase
-    ? remoteProfile?.spendingTotal || 0
-    : spendingByUser[username] || 0;
   const purchaseHistory = useFirebase
     ? remoteProfile?.purchaseHistory || []
     : getScopedStoredValue(purchaseHistoryByUser, userKey, []);
+  const visiblePurchaseHistory = purchaseHistory.filter(
+    (order) => !isCancelledOrder(order),
+  );
+  const visibleAdminOrders = adminOrders.filter((order) => !isCancelledOrder(order));
+  const activeSpending = visiblePurchaseHistory.reduce(
+    (sum, order) => sum + getOrderTotalPrice(order),
+    0,
+  );
   const activePaymentMethod = paymentMethodGroups
     .flatMap((group) => group.options)
     .find((option) => option.id === selectedPaymentMethod);
   const filteredStatsOrders = getOrdersForDateMatch(
-    purchaseHistory,
+    visiblePurchaseHistory,
     (orderDate) => isSameDay(orderDate, statsAnchorDate),
   );
   const statsTotal = filteredStatsOrders.reduce(
-    (sum, order) => sum + Number(order.totalPrice || 0),
+    (sum, order) => sum + getOrderTotalPrice(order),
     0,
   );
   const statsItemsTotal = filteredStatsOrders.reduce(
-    (sum, order) => sum + Number(order.totalItems || 0),
+    (sum, order) => sum + getOrderTotalItems(order),
     0,
   );
   const maxStatsOrderValue = filteredStatsOrders.reduce(
-    (max, order) => Math.max(max, Number(order.totalPrice || 0)),
+    (max, order) => Math.max(max, getOrderTotalPrice(order)),
     0,
   );
-  const overallItemsPurchased = purchaseHistory.reduce(
-    (sum, order) => sum + Number(order.totalItems || 0),
+  const overallItemsPurchased = visiblePurchaseHistory.reduce(
+    (sum, order) => sum + getOrderTotalItems(order),
     0,
   );
   const chartSeries = Array.from({ length: 12 }, (_, index) => {
     const currentDate = new Date(chartYear, index, 1);
-    const total = purchaseHistory
+    const total = visiblePurchaseHistory
       .filter((order) => isSameMonth(new Date(order.createdAt), currentDate))
-      .reduce((sum, order) => sum + Number(order.totalPrice || 0), 0);
+      .reduce((sum, order) => sum + getOrderTotalPrice(order), 0);
 
     return {
       monthIndex: index,
@@ -1642,7 +1659,7 @@ function App() {
                   <AppIcon type="delivery" className="content-icon" />
                 </span>
                 <strong>
-                  {adminOrders.filter((order) => order.status === 'pending').length}
+                  {visibleAdminOrders.filter((order) => order.status === 'pending').length}
                 </strong>
                 <span>Pending orders</span>
               </div>
@@ -1938,7 +1955,7 @@ function App() {
                       />
                     </div>
                     <div className="analytics-order-meta">
-                      <span>{order.totalItems} item</span>
+                      <span>{getOrderTotalItems(order)} item</span>
                       <strong>Rp {currencyFormatter.format(amount)}</strong>
                     </div>
                   </article>
@@ -2747,23 +2764,23 @@ function App() {
 
         {adminOrdersError ? <div className="form-error">{adminOrdersError}</div> : null}
 
-        {isAdminOrdersLoading && adminOrders.length === 0 ? (
+        {isAdminOrdersLoading && visibleAdminOrders.length === 0 ? (
           <div className="empty-state left compact-empty-state">
             <h3>Loading orders</h3>
             <p>Sedang mengambil pesanan terbaru dari Firestore.</p>
           </div>
         ) : null}
 
-        {!isAdminOrdersLoading && adminOrders.length === 0 ? (
+        {!isAdminOrdersLoading && visibleAdminOrders.length === 0 ? (
           <div className="empty-state left compact-empty-state">
             <h3>Belum ada pesanan</h3>
             <p>Order baru yang masuk akan tampil di panel admin ini.</p>
           </div>
         ) : null}
 
-        {adminOrders.length > 0 ? (
+        {visibleAdminOrders.length > 0 ? (
           <div className="admin-order-list">
-            {adminOrders.map((order) => {
+            {visibleAdminOrders.map((order) => {
               const statusMeta = getOrderStatusMeta(order.status);
               const visibleOrderActions =
                 order.status === 'completed' ? ['completed'] : orderStatusOptions;
@@ -2782,7 +2799,7 @@ function App() {
 
                   <div className="order-history-meta">
                     <span>{dateTimeFormatter.format(new Date(order.createdAt))}</span>
-                    <span>{order.totalItems} item</span>
+                    <span>{getOrderTotalItems(order)} item</span>
                     <strong>Rp {currencyFormatter.format(order.totalPrice || 0)}</strong>
                   </div>
 
@@ -2884,7 +2901,7 @@ function App() {
                 <AppIcon type="products" className="summary-icon" />
                 Riwayat pembelian
               </span>
-              <strong>{purchaseHistory.length} order</strong>
+              <strong>{visiblePurchaseHistory.length} order</strong>
             </div>
             <div className="summary-row">
               <span className="icon-text">
@@ -2931,9 +2948,9 @@ function App() {
             </div>
           </div>
 
-          {purchaseHistory.length > 0 ? (
+          {visiblePurchaseHistory.length > 0 ? (
             <div className="order-history-list">
-              {purchaseHistory.map((order) => {
+              {visiblePurchaseHistory.map((order) => {
                 const statusMeta = getOrderStatusMeta(order.status);
 
                 return (
@@ -2952,7 +2969,7 @@ function App() {
 
                     <div className="order-history-meta">
                       <span>Payment: {order.paymentMethod}</span>
-                      <span>{order.totalItems} item</span>
+                      <span>{getOrderTotalItems(order)} item</span>
                       <strong>Rp {currencyFormatter.format(order.totalPrice || 0)}</strong>
                     </div>
 
