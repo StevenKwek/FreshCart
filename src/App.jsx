@@ -965,12 +965,18 @@ function App() {
     visiblePurchaseHistory,
     (orderDate) => isSameDay(orderDate, statsAnchorDate),
   );
-  const statsOrderCount = filteredStatsOrders.length;
+  const statsItemsTotal = filteredStatsOrders.reduce(
+    (sum, order) => sum + getOrderTotalItems(order),
+    0,
+  );
   const statsTotal = filteredStatsOrders.reduce(
     (sum, order) => sum + getOrderTotalPrice(order),
     0,
   );
-  const overallOrderCount = visiblePurchaseHistory.length;
+  const overallItemsPurchased = visiblePurchaseHistory.reduce(
+    (sum, order) => sum + getOrderTotalItems(order),
+    0,
+  );
   const chartSeries = Array.from({ length: 12 }, (_, index) => {
     const currentDate = new Date(chartYear, index, 1);
     const total = visiblePurchaseHistory
@@ -1741,8 +1747,8 @@ function App() {
               <span className="card-icon-badge">
                 <AppIcon type="cart" className="content-icon" />
               </span>
-              <strong>{overallOrderCount}</strong>
-              <span>Total pesanan tercatat</span>
+              <strong>{overallItemsPurchased}</strong>
+              <span>Total item dibeli</span>
             </div>
           </div>
         </section>
@@ -1756,7 +1762,7 @@ function App() {
                   Analytics Controls
                 </span>
                 <h1>Atur periode statistik</h1>
-                <p>Pilih tanggal untuk melihat total pengeluaran dan jumlah pesanan pada hari itu.</p>
+                <p>Pilih tanggal untuk melihat total pengeluaran dan jumlah barang yang dibeli pada hari itu.</p>
               </div>
             </div>
 
@@ -1793,8 +1799,8 @@ function App() {
                 <span className="card-icon-badge">
                   <AppIcon type="cart" className="content-icon" />
                 </span>
-                <strong>{statsOrderCount}</strong>
-                <span>Total pesanan tanggal terpilih</span>
+                <strong>{statsItemsTotal}</strong>
+                <span>Total barang tanggal terpilih</span>
               </div>
             </div>
           </div>
