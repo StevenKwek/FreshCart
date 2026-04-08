@@ -1249,6 +1249,20 @@ img {
 
 .admin-home-banner {
   align-items: flex-start;
+  gap: 28px;
+  padding-bottom: 34px;
+}
+
+.admin-home-copy {
+  max-width: 760px;
+}
+
+.admin-home-copy p {
+  max-width: 680px;
+}
+
+.admin-home-stats {
+  align-self: stretch;
 }
 
 .analytics-home-banner {
@@ -1292,18 +1306,20 @@ img {
 .admin-shortcut-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  gap: 22px;
+  margin-top: 30px;
 }
 
 .admin-shortcut-card {
   display: grid;
-  gap: 12px;
-  padding: 22px;
+  gap: 14px;
+  padding: 24px;
   border-radius: 24px;
   border: 1px solid rgba(147, 173, 151, 0.18);
   background: rgba(255, 255, 255, 0.82);
   box-shadow: 0 18px 45px rgba(81, 112, 88, 0.08);
   text-align: left;
+  min-height: 262px;
 }
 
 .admin-shortcut-card h2 {
@@ -1322,6 +1338,11 @@ img {
   align-items: flex-start;
 }
 
+.admin-payments-layout {
+  align-items: flex-start;
+  gap: 24px;
+}
+
 .admin-product-form-card {
   display: grid;
   gap: 22px;
@@ -1333,13 +1354,28 @@ img {
 }
 
 .admin-payment-manager {
-  margin-top: 32px;
+  margin-top: 34px;
   display: grid;
-  gap: 22px;
+  gap: 24px;
 }
 
 .admin-payment-header {
   margin-bottom: 0;
+}
+
+.admin-payment-header .mini-badge {
+  margin-bottom: 16px;
+}
+
+.admin-payment-header h2 {
+  margin-bottom: 10px;
+}
+
+.admin-payment-header p {
+  margin: 0;
+  max-width: 680px;
+  color: #68806e;
+  line-height: 1.65;
 }
 
 .admin-payment-form {
@@ -1441,17 +1477,36 @@ img {
 
 .admin-payment-list {
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 
 .admin-payment-list-section {
-  margin-top: 28px;
+  margin-top: 34px;
+  margin-bottom: 14px;
+}
+
+.admin-payment-list-section .section-header {
+  margin-top: 0;
+  margin-bottom: 22px;
+}
+
+.admin-payment-list-section .mini-badge {
+  margin-bottom: 14px;
+}
+
+.admin-payment-list-section h2 {
+  margin-bottom: 10px;
+}
+
+.admin-payment-list-section .section-copy {
+  margin: 0;
+  max-width: 700px;
 }
 
 .admin-payment-group-card {
   display: grid;
-  gap: 16px;
-  padding: 22px;
+  gap: 18px;
+  padding: 24px;
   border-radius: 22px;
   background: rgba(243, 248, 243, 0.94);
   border: 1px solid rgba(147, 173, 151, 0.18);
@@ -1482,23 +1537,35 @@ img {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 18px;
   padding: 18px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.78);
   border: 1px solid rgba(147, 173, 151, 0.16);
 }
 
+.admin-payment-option > div {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 6px;
+}
+
 .admin-payment-option strong {
   display: block;
   color: #163728;
-  margin-bottom: 4px;
+  margin-bottom: 0;
 }
 
 .admin-payment-option p {
   margin: 0;
   color: #68806e;
   line-height: 1.55;
+}
+
+.admin-payment-option .secondary-button {
+  align-self: center;
+  flex-shrink: 0;
 }
 
 .analytics-layout {
@@ -2349,6 +2416,7 @@ body.theme-dark {
 .app-shell.dark-theme .hero-copy p,
 .app-shell.dark-theme .auth-highlight p,
 .app-shell.dark-theme .home-banner p,
+.app-shell.dark-theme .admin-payment-header p,
 .app-shell.dark-theme .section-copy,
 .app-shell.dark-theme .detail-description,
 .app-shell.dark-theme .empty-state p,
@@ -3091,6 +3159,10 @@ body.theme-dark {
   .admin-product-summary {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .admin-shortcut-card {
+    min-height: auto;
   }
 
   .admin-payment-option {

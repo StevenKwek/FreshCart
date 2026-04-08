@@ -95,7 +95,6 @@ const adminNavItems = [
   { key: 'home', label: 'Dashboard', icon: 'home' },
   { key: 'admin-products', label: 'Products', icon: 'products' },
   { key: 'admin-orders', label: 'Orders', icon: 'orders' },
-  { key: 'wishlist', label: 'Wishlist', icon: 'wishlist' },
   { key: 'payments', label: 'Payments', icon: 'payment' },
 ];
 const createEmptyAdminProductForm = () => ({
@@ -1675,15 +1674,15 @@ function App() {
       return (
         <main className="page-shell">
           <section className="home-banner admin-home-banner">
-            <div>
+            <div className="admin-home-copy">
               <span className="mini-badge">Admin dashboard</span>
-              <h1>Kelola katalog, order, wishlist, dan payment method dari satu tempat.</h1>
+              <h1>Kelola katalog, order, dan payment method dari satu tempat.</h1>
               <p>
                 Mode admin sekarang punya jalur kerja yang lebih lengkap, jadi kamu
                 tidak hanya memantau pesanan tapi juga bisa mengurus isi toko.
               </p>
             </div>
-            <div className="stat-grid">
+            <div className="stat-grid admin-home-stats">
               <div className="stat-card">
                 <span className="card-icon-badge">
                   <AppIcon type="products" className="content-icon" />
@@ -2359,7 +2358,7 @@ function App() {
 
   const renderPayments = () => (
     <main className="page-shell">
-      <section className="checkout-layout">
+      <section className={`checkout-layout ${isAdminUser ? 'admin-payments-layout' : ''}`}>
         <div className="order-card">
           <div className="section-header compact">
             <div>
@@ -2386,9 +2385,13 @@ function App() {
                 <div>
                   <span className="mini-badge">
                     <AppIcon type="payment" className="badge-icon" />
-                    Admin Controls
+                    Payment Controls
                   </span>
                   <h2>Tambah metode pembayaran baru</h2>
+                  <p>
+                    Tambahkan metode baru dengan label yang jelas supaya panel admin
+                    tetap rapi dan mudah dipakai.
+                  </p>
                 </div>
               </div>
 
@@ -2488,9 +2491,13 @@ function App() {
             <div>
               <span className="mini-badge">
                 <AppIcon type="payment" className="badge-icon" />
-                Payment List
+                Payment Methods
               </span>
               <h2>Daftar metode pembayaran aktif</h2>
+              <p className="section-copy">
+                Rapikan opsi pembayaran aktif, hapus metode lama, dan jaga daftar tetap
+                mudah dipindai.
+              </p>
             </div>
           </div>
 
@@ -2858,17 +2865,36 @@ function App() {
           <div className="profile-stat-grid">
             <div className="detail-meta-card">
               <span className="card-icon-badge">
-                <AppIcon type="heart" className="content-icon" />
+                <AppIcon
+                  type={isAdminUser ? 'delivery' : 'heart'}
+                  className="content-icon"
+                />
               </span>
-              <strong>{wishlist.length}</strong>
-              <span>Wishlist item</span>
+              <strong>
+                {isAdminUser
+                  ? visibleAdminOrders.filter(
+                      (order) => getOrderStatusValue(order) === 'pending',
+                    ).length
+                  : wishlist.length}
+              </strong>
+              <span>{isAdminUser ? 'Pending orders' : 'Wishlist item'}</span>
             </div>
             <div className="detail-meta-card">
               <span className="card-icon-badge">
-                <AppIcon type="cart" className="content-icon" />
+                <AppIcon
+                  type={isAdminUser ? 'wallet' : 'cart'}
+                  className="content-icon"
+                />
               </span>
-              <strong>{totalItems}</strong>
-              <span>Items in cart</span>
+              <strong>
+                {isAdminUser
+                  ? paymentMethodGroups.reduce(
+                      (sum, group) => sum + group.options.length,
+                      0,
+                    )
+                  : totalItems}
+              </strong>
+              <span>{isAdminUser ? 'Payment methods' : 'Items in cart'}</span>
             </div>
             <div className="detail-meta-card">
               <span className="card-icon-badge">
@@ -3017,7 +3043,7 @@ function App() {
   const renderAuthenticatedView = () => {
     switch (currentView) {
       case 'wishlist':
-        return renderWishlist();
+        return isAdminUser ? renderHome() : renderWishlist();
       case 'products':
         return renderProducts();
       case 'payments':
