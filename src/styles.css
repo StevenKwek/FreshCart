@@ -1463,6 +1463,7 @@ img {
   color: #173225;
   border-color: rgba(132, 160, 139, 0.2);
   color-scheme: light;
+  box-shadow: none;
 }
 
 .analytics-calendar-field input::-webkit-calendar-picker-indicator {
@@ -1540,18 +1541,27 @@ img {
   min-height: 170px;
 }
 
-.monthly-chart-bars {
-  grid-template-columns: repeat(12, minmax(18px, 1fr));
-}
-
-.yearly-chart-bars {
-  grid-template-columns: repeat(5, minmax(40px, 1fr));
+.pivot-summary-bars {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  min-height: 240px;
 }
 
 .pivot-chart-bar-item {
   display: grid;
   gap: 10px;
   align-items: end;
+}
+
+.pivot-summary-item {
+  justify-items: center;
+}
+
+.pivot-chart-bar-value {
+  font-weight: 700;
+  color: #1b7d47;
+  text-align: center;
+  line-height: 1.4;
 }
 
 .pivot-chart-bar {
@@ -1567,6 +1577,10 @@ img {
   font-size: 0.76rem;
   text-align: center;
   word-break: break-word;
+}
+
+.pivot-chart-bar-item strong {
+  color: #163728;
 }
 
 .analytics-history-card {
@@ -2320,6 +2334,7 @@ body.theme-dark {
 .app-shell.dark-theme .analytics-order-copy strong,
 .app-shell.dark-theme .pivot-section-header strong,
 .app-shell.dark-theme .pivot-chart-header h2,
+.app-shell.dark-theme .pivot-chart-bar-item strong,
 .app-shell.dark-theme .pivot-year-switcher strong {
   color: #edf6ef;
 }
@@ -2333,9 +2348,14 @@ body.theme-dark {
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22);
 }
 
+.app-shell.dark-theme .pivot-chart-bar-value {
+  color: #86d1a1;
+}
+
 .app-shell.dark-theme .analytics-calendar-field input {
   background: rgba(12, 20, 16, 0.94);
   border-color: rgba(117, 153, 130, 0.16);
+  color: #edf6ef;
   color-scheme: dark;
 }
 
@@ -2902,6 +2922,11 @@ body.theme-dark {
 
   .analytics-order-meta {
     justify-items: start;
+  }
+
+  .pivot-summary-bars {
+    grid-template-columns: 1fr;
+    min-height: auto;
   }
 
   .admin-product-meta {
