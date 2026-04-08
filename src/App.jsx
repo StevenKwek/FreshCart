@@ -2114,12 +2114,13 @@ function App() {
         </div>
       </section>
 
-      <section className="products-grid">
+      <section className="products-grid wishlist-grid">
         {wishlistProducts.length > 0 ? (
           wishlistProducts.map((product) => (
             <ProductCard
               key={product.id}
               product={product}
+              variant="wishlist"
               isWishlisted={wishlist.includes(product.id)}
               onToggleWishlist={toggleWishlist}
               onViewDetail={openProductDetail}
