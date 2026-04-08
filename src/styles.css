@@ -2208,7 +2208,7 @@ img {
   position: fixed;
   right: 24px;
   top: calc(env(safe-area-inset-top, 0px) + 16px);
-  z-index: 20;
+  z-index: 9999;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -2219,6 +2219,7 @@ img {
   color: #ffffff;
   box-shadow: 0 18px 40px rgba(53, 67, 57, 0.2);
   animation: slideUp 0.3s ease;
+  transform: translateZ(0);
 }
 
 .toast span {

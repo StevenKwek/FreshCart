@@ -1157,7 +1157,6 @@ function App() {
     try {
       const items = Array.isArray(order.items) ? order.items : [];
       const orderTotal = Number(order.totalPrice || 0);
-      const nextTimestamp = new Date().toISOString();
 
       setInventory((current) =>
         current.map((product) => {
@@ -1186,15 +1185,7 @@ function App() {
 
         return {
           ...current,
-          [userKey]: scopedHistory.map((entry) =>
-            entry.id === order.id
-              ? {
-                  ...entry,
-                  status: 'cancelled',
-                  updatedAt: nextTimestamp,
-                }
-              : entry,
-          ),
+          [userKey]: scopedHistory.filter((entry) => entry.id !== order.id),
         };
       });
 

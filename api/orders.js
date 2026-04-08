@@ -227,22 +227,25 @@ export default async function handler(request, response) {
       : [];
     const currentSpendingTotal = Number(userSnapshot.data()?.spendingTotal || 0);
     const orderTotal = Number(nextOrder.totalPrice || 0);
+    const shouldRemoveOrder = currentStatus !== 'cancelled' && status === 'cancelled';
     const spendingDelta =
-      currentStatus !== 'cancelled' && status === 'cancelled'
+      shouldRemoveOrder
         ? -orderTotal
         : currentStatus === 'cancelled' && status !== 'cancelled'
           ? orderTotal
           : 0;
-    const nextPurchaseHistory = purchaseHistory.map((order) =>
-      order.id === orderRef.id
-        ? {
-            ...order,
-            status,
-            updatedAt: nextOrder.updatedAt,
-          }
-        : order,
-    );
-    const shouldRestock = currentStatus !== 'cancelled' && status === 'cancelled';
+    const nextPurchaseHistory = shouldRemoveOrder
+      ? purchaseHistory.filter((order) => order.id !== orderRef.id)
+      : purchaseHistory.map((order) =>
+          order.id === orderRef.id
+            ? {
+                ...order,
+                status,
+                updatedAt: nextOrder.updatedAt,
+              }
+            : order,
+        );
+    const shouldRestock = shouldRemoveOrder;
 
     await adminDb.runTransaction(async (transaction) => {
       const restockPlan = [];
@@ -275,7 +278,11 @@ export default async function handler(request, response) {
         restockPlan.map((entry) => transaction.get(entry.productRef)),
       );
 
-      transaction.set(orderRef, nextOrder, { merge: true });
+      if (shouldRemoveOrder) {
+        transaction.delete(orderRef);
+      } else {
+        transaction.set(orderRef, nextOrder, { merge: true });
+      }
 
       productSnapshots.forEach((productSnapshot, index) => {
         if (!productSnapshot.exists) {
@@ -303,7 +310,14 @@ export default async function handler(request, response) {
 
     return sendJson(response, 200, {
       ok: true,
-      order: nextOrder,
+      order: shouldRemoveOrder
+        ? {
+            id: orderRef.id,
+            status: 'cancelled',
+            removed: true,
+            updatedAt: nextOrder.updatedAt,
+          }
+        : nextOrder,
     });
   } catch (error) {
     const message =
