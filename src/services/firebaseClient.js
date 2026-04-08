@@ -544,3 +544,49 @@ export const updateAdminOrderStatus = async ({
 
   return payload.order;
 };
+
+export const createAdminProduct = async ({ firebaseUser, product }) => {
+  if (!firebaseUser) {
+    throw new Error('Please login first.');
+  }
+
+  const idToken = await firebaseUser.getIdToken();
+  const response = await fetch('/api/products', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({ product }),
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to create product.');
+  }
+
+  return payload.product;
+};
+
+export const deleteAdminProduct = async ({ firebaseUser, productId }) => {
+  if (!firebaseUser) {
+    throw new Error('Please login first.');
+  }
+
+  const idToken = await firebaseUser.getIdToken();
+  const response = await fetch('/api/products', {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({ productId }),
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to delete product.');
+  }
+
+  return payload.productId;
+};

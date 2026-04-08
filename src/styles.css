@@ -1213,6 +1213,145 @@ img {
   margin-top: 18px;
 }
 
+.admin-home-banner {
+  align-items: flex-start;
+}
+
+.admin-shortcut-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.admin-shortcut-card {
+  display: grid;
+  gap: 12px;
+  padding: 22px;
+  border-radius: 24px;
+  border: 1px solid rgba(147, 173, 151, 0.18);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 18px 45px rgba(81, 112, 88, 0.08);
+  text-align: left;
+}
+
+.admin-shortcut-card h2 {
+  margin: 0;
+  color: #163728;
+  font-size: 1.3rem;
+}
+
+.admin-shortcut-card p {
+  margin: 0;
+  color: #68806e;
+  line-height: 1.6;
+}
+
+.admin-products-layout {
+  align-items: flex-start;
+}
+
+.admin-product-form-card {
+  display: grid;
+  gap: 22px;
+}
+
+.admin-product-form {
+  display: grid;
+  gap: 20px;
+}
+
+.admin-product-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.admin-product-form-full {
+  grid-column: 1 / -1;
+}
+
+.admin-product-form-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-product-list {
+  display: grid;
+  gap: 16px;
+}
+
+.admin-product-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(243, 248, 243, 0.94);
+  border: 1px solid rgba(147, 173, 151, 0.18);
+}
+
+.admin-product-summary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.admin-product-thumb {
+  width: 76px;
+  height: 76px;
+  object-fit: cover;
+  border-radius: 18px;
+  border: 1px solid rgba(147, 173, 151, 0.18);
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+.admin-product-summary strong {
+  display: block;
+  color: #163728;
+  margin-bottom: 6px;
+}
+
+.admin-product-summary p {
+  margin: 0;
+  color: #567062;
+}
+
+.admin-product-description {
+  display: block;
+  margin-top: 6px;
+  color: #68806e;
+  line-height: 1.5;
+}
+
+.admin-product-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: #567062;
+}
+
+.danger-button {
+  color: #a74343;
+  border-color: rgba(184, 81, 81, 0.22);
+}
+
+.danger-button:hover:not(:disabled) {
+  background: rgba(184, 81, 81, 0.12);
+  border-color: rgba(184, 81, 81, 0.34);
+  color: #a74343;
+}
+
+.payment-preference-note {
+  margin-top: 18px;
+}
+
 .profile-section-card {
   grid-column: 1 / -1;
 }
@@ -1858,10 +1997,29 @@ body.theme-dark {
 
 .app-shell.dark-theme .order-history-card,
 .app-shell.dark-theme .admin-order-item,
-.app-shell.dark-theme .status-action-button {
+.app-shell.dark-theme .status-action-button,
+.app-shell.dark-theme .admin-shortcut-card,
+.app-shell.dark-theme .admin-product-item {
   background: rgba(21, 31, 26, 0.9);
   border-color: rgba(117, 153, 130, 0.16);
   box-shadow: 0 18px 45px rgba(0, 0, 0, 0.22);
+}
+
+.app-shell.dark-theme .admin-shortcut-card h2,
+.app-shell.dark-theme .admin-product-summary strong {
+  color: #edf6ef;
+}
+
+.app-shell.dark-theme .admin-shortcut-card p,
+.app-shell.dark-theme .admin-product-summary p,
+.app-shell.dark-theme .admin-product-description,
+.app-shell.dark-theme .admin-product-meta {
+  color: #9db3a4;
+}
+
+.app-shell.dark-theme .admin-product-thumb {
+  background: rgba(12, 20, 16, 0.94);
+  border-color: rgba(117, 153, 130, 0.16);
 }
 
 .app-shell.dark-theme .order-history-id,
@@ -1911,6 +2069,17 @@ body.theme-dark {
   background: rgba(67, 120, 86, 0.18);
   color: #86d1a1;
   border-color: rgba(118, 214, 153, 0.3);
+}
+
+.app-shell.dark-theme .danger-button {
+  color: #ffb8b8;
+  border-color: rgba(232, 128, 128, 0.24);
+}
+
+.app-shell.dark-theme .danger-button:hover:not(:disabled) {
+  background: rgba(184, 81, 81, 0.2);
+  color: #ffd1d1;
+  border-color: rgba(232, 128, 128, 0.34);
 }
 
 .startup-splash {
@@ -2370,6 +2539,11 @@ body.theme-dark {
     grid-template-columns: 1fr;
   }
 
+  .admin-shortcut-grid,
+  .admin-product-form-grid {
+    grid-template-columns: 1fr;
+  }
+
   .profile-identity {
     align-items: flex-start;
   }
@@ -2385,6 +2559,16 @@ body.theme-dark {
 
   .cart-item {
     grid-template-columns: 1fr;
+  }
+
+  .admin-product-item,
+  .admin-product-summary {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-product-meta {
+    justify-content: flex-start;
   }
 
   .cart-item img {
@@ -2535,6 +2719,11 @@ body.theme-dark {
   .profile-identity {
     flex-direction: column;
     gap: 14px;
+  }
+
+  .admin-shortcut-card,
+  .admin-product-item {
+    padding: 18px;
   }
 
   .profile-avatar {

@@ -28,6 +28,8 @@ import {
 } from './utils/appState';
 import {
   checkoutWithFirebaseApi,
+  createAdminProduct,
+  deleteAdminProduct,
   ensureRemoteUserProfile,
   fetchAdminOrders,
   firebaseEnabled,
@@ -72,6 +74,24 @@ const landingFeatureHighlights = [
 ];
 
 const orderStatusOptions = ['accepted', 'processing', 'completed', 'cancelled'];
+const adminNavItems = [
+  { key: 'home', label: 'Dashboard', icon: 'home' },
+  { key: 'admin-products', label: 'Products', icon: 'products' },
+  { key: 'admin-orders', label: 'Orders', icon: 'orders' },
+  { key: 'wishlist', label: 'Wishlist', icon: 'wishlist' },
+  { key: 'payments', label: 'Payments', icon: 'payment' },
+  { key: 'cart', label: 'Cart', icon: 'cart' },
+];
+const createEmptyAdminProductForm = () => ({
+  name: '',
+  category: '',
+  price: '',
+  stock: '',
+  unit: '',
+  rating: '4.5',
+  image: '',
+  description: '',
+});
 
 const getOrderStatusMeta = (status) => {
   switch (status) {
@@ -174,6 +194,9 @@ function App() {
   const [isAdminOrdersLoading, setIsAdminOrdersLoading] = useState(false);
   const [adminOrdersError, setAdminOrdersError] = useState('');
   const [orderStatusUpdatingId, setOrderStatusUpdatingId] = useState('');
+  const [adminProductForm, setAdminProductForm] = useState(createEmptyAdminProductForm);
+  const [isAdminProductSaving, setIsAdminProductSaving] = useState(false);
+  const [deletingProductId, setDeletingProductId] = useState(null);
   const syncErrorShownRef = useRef(false);
   const skipRemoteSyncRef = useRef(false);
   const startupSplashTimerRef = useRef(null);
@@ -590,7 +613,11 @@ function App() {
   }, [selectedProductId, inventory, currentView]);
 
   useEffect(() => {
-    if (!useFirebase || !isAdminUser || currentView !== 'profile') {
+    if (
+      !useFirebase ||
+      !isAdminUser ||
+      !['home', 'admin-orders'].includes(currentView)
+    ) {
       return;
     }
 
@@ -618,6 +645,7 @@ function App() {
   });
 
   const wishlistProducts = inventory.filter((product) => wishlist.includes(product.id));
+  const adminProductList = [...inventory].sort((left, right) => left.id - right.id);
 
   const totalPrice = cartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
@@ -844,6 +872,76 @@ function App() {
       );
     } finally {
       setOrderStatusUpdatingId('');
+    }
+  };
+
+  const handleAdminProductFieldChange = (field, value) => {
+    setAdminProductForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const handleAdminProductSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!firebaseAuthUser) {
+      showToast('Please login again before managing products.', 'warning');
+      return;
+    }
+
+    setIsAdminProductSaving(true);
+
+    try {
+      await createAdminProduct({
+        firebaseUser: firebaseAuthUser,
+        product: {
+          ...adminProductForm,
+          price: Number(adminProductForm.price),
+          stock: Number(adminProductForm.stock),
+          rating: Number(adminProductForm.rating || 4.5),
+        },
+      });
+      setAdminProductForm(createEmptyAdminProductForm());
+      showToast('Produk baru berhasil ditambahkan.');
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : 'Failed to create the product.',
+        'warning',
+      );
+    } finally {
+      setIsAdminProductSaving(false);
+    }
+  };
+
+  const handleAdminProductDelete = async (product) => {
+    if (!firebaseAuthUser) {
+      showToast('Please login again before managing products.', 'warning');
+      return;
+    }
+
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm(`Hapus produk "${product.name}" dari katalog?`)
+    ) {
+      return;
+    }
+
+    setDeletingProductId(product.id);
+
+    try {
+      await deleteAdminProduct({
+        firebaseUser: firebaseAuthUser,
+        productId: product.id,
+      });
+      showToast(`${product.name} berhasil dihapus.`, 'info');
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : 'Failed to delete the product.',
+        'warning',
+      );
+    } finally {
+      setDeletingProductId(null);
     }
   };
 
@@ -1108,96 +1206,169 @@ function App() {
     </main>
   );
 
-  const renderHome = () => (
-    <main className="page-shell">
-      <section className="home-banner">
-        <div>
-          <span className="mini-badge">Daily essentials</span>
-          <h1>Shop smarter for your weekly grocery run.</h1>
-          <p>
-            Jelajahi produk segar, simpan favorit, dan masukkan ke cart hanya
-            dalam beberapa klik.
-          </p>
-        </div>
-        <div className="stat-grid">
-          <div className="stat-card">
-            <span className="card-icon-badge">
-              <AppIcon type="products" className="content-icon" />
-            </span>
-            <strong>{inventory.length}</strong>
-            <span>Produk tersedia</span>
-          </div>
-          <div className="stat-card">
-            <span className="card-icon-badge">
-              <AppIcon type="heart" className="content-icon" />
-            </span>
-            <strong>{wishlist.length}</strong>
-            <span>Wishlist item</span>
-          </div>
-          <div className="stat-card">
-            <span className="card-icon-badge">
-              <AppIcon type="cart" className="content-icon" />
-            </span>
-            <strong>{totalItems}</strong>
-            <span>Cart item</span>
-          </div>
-        </div>
-      </section>
+  const renderHome = () => {
+    if (isAdminUser) {
+      return (
+        <main className="page-shell">
+          <section className="home-banner admin-home-banner">
+            <div>
+              <span className="mini-badge">Admin dashboard</span>
+              <h1>Kelola katalog, order, wishlist, dan payment method dari satu tempat.</h1>
+              <p>
+                Mode admin sekarang punya jalur kerja yang lebih lengkap, jadi kamu
+                tidak hanya memantau pesanan tapi juga bisa mengurus isi toko.
+              </p>
+            </div>
+            <div className="stat-grid">
+              <div className="stat-card">
+                <span className="card-icon-badge">
+                  <AppIcon type="products" className="content-icon" />
+                </span>
+                <strong>{inventory.length}</strong>
+                <span>Total produk</span>
+              </div>
+              <div className="stat-card">
+                <span className="card-icon-badge">
+                  <AppIcon type="delivery" className="content-icon" />
+                </span>
+                <strong>
+                  {adminOrders.filter((order) => order.status === 'pending').length}
+                </strong>
+                <span>Pending orders</span>
+              </div>
+              <div className="stat-card">
+                <span className="card-icon-badge">
+                  <AppIcon type="wallet" className="content-icon" />
+                </span>
+                <strong>
+                  {paymentMethods.reduce((sum, group) => sum + group.options.length, 0)}
+                </strong>
+                <span>Payment options</span>
+              </div>
+            </div>
+          </section>
 
-      <section className="toolbar">
-        <label className="search-box">
-          <span className="icon-text">
-            <AppIcon type="search" className="content-icon soft" />
-            Search Product
-          </span>
-          <input
-            type="text"
-            placeholder="Search by product name..."
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-          />
-        </label>
-
-        <div className="filter-section">
-          <span className="filter-label icon-text">
-            <AppIcon type="grid" className="content-icon soft" />
-            Filter Category
-          </span>
-          <div className="filter-group">
-          {categories.map((category) => (
-            <button
-              key={category}
-              className={`filter-button ${activeCategory === category ? 'active' : ''}`}
-              onClick={() => setActiveCategory(category)}
-            >
-              {category}
+          <section className="admin-shortcut-grid">
+            <button className="admin-shortcut-card" onClick={() => navigateTo('admin-products')}>
+              <span className="mini-badge">
+                <AppIcon type="products" className="badge-icon" />
+                Products
+              </span>
+              <h2>Tambah dan hapus produk</h2>
+              <p>Atur katalog aktif, stok baru, dan produk yang sudah tidak dijual.</p>
             </button>
-          ))}
-        </div>
-        </div>
-      </section>
+            <button className="admin-shortcut-card" onClick={() => navigateTo('admin-orders')}>
+              <span className="mini-badge">
+                <AppIcon type="delivery" className="badge-icon" />
+                Orders
+              </span>
+              <h2>Pantau order masuk</h2>
+              <p>Lihat pesanan terbaru lalu ubah statusnya tanpa masuk ke profile.</p>
+            </button>
+            <button className="admin-shortcut-card" onClick={() => navigateTo('payments')}>
+              <span className="mini-badge">
+                <AppIcon type="wallet" className="badge-icon" />
+                Payments
+              </span>
+              <h2>Atur metode pembayaran</h2>
+              <p>Pilih metode default admin untuk simulasi checkout berikutnya.</p>
+            </button>
+          </section>
+        </main>
+      );
+    }
 
-      <section className="products-grid">
-        {filteredProducts.length > 0 ? (
-          filteredProducts.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              isWishlisted={wishlist.includes(product.id)}
-              onToggleWishlist={toggleWishlist}
-              onViewDetail={openProductDetail}
-              onAddToCart={addToCart}
-            />
-          ))
-        ) : (
-          <div className="empty-state">
-            <h3>No products found</h3>
-            <p>Try changing your search or category filter.</p>
+    return (
+      <main className="page-shell">
+        <section className="home-banner">
+          <div>
+            <span className="mini-badge">Daily essentials</span>
+            <h1>Shop smarter for your weekly grocery run.</h1>
+            <p>
+              Jelajahi produk segar, simpan favorit, dan masukkan ke cart hanya
+              dalam beberapa klik.
+            </p>
           </div>
-        )}
-      </section>
-    </main>
-  );
+          <div className="stat-grid">
+            <div className="stat-card">
+              <span className="card-icon-badge">
+                <AppIcon type="products" className="content-icon" />
+              </span>
+              <strong>{inventory.length}</strong>
+              <span>Produk tersedia</span>
+            </div>
+            <div className="stat-card">
+              <span className="card-icon-badge">
+                <AppIcon type="heart" className="content-icon" />
+              </span>
+              <strong>{wishlist.length}</strong>
+              <span>Wishlist item</span>
+            </div>
+            <div className="stat-card">
+              <span className="card-icon-badge">
+                <AppIcon type="cart" className="content-icon" />
+              </span>
+              <strong>{totalItems}</strong>
+              <span>Cart item</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="toolbar">
+          <label className="search-box">
+            <span className="icon-text">
+              <AppIcon type="search" className="content-icon soft" />
+              Search Product
+            </span>
+            <input
+              type="text"
+              placeholder="Search by product name..."
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
+          </label>
+
+          <div className="filter-section">
+            <span className="filter-label icon-text">
+              <AppIcon type="grid" className="content-icon soft" />
+              Filter Category
+            </span>
+            <div className="filter-group">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  className={`filter-button ${activeCategory === category ? 'active' : ''}`}
+                  onClick={() => setActiveCategory(category)}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="products-grid">
+          {filteredProducts.length > 0 ? (
+            filteredProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                isWishlisted={wishlist.includes(product.id)}
+                onToggleWishlist={toggleWishlist}
+                onViewDetail={openProductDetail}
+                onAddToCart={addToCart}
+              />
+            ))
+          ) : (
+            <div className="empty-state">
+              <h3>No products found</h3>
+              <p>Try changing your search or category filter.</p>
+            </div>
+          )}
+        </section>
+      </main>
+    );
+  };
 
   const renderDetail = () => {
     if (!selectedProduct) {
@@ -1374,6 +1545,30 @@ function App() {
     </main>
   );
 
+  const renderPaymentMethodSelector = () => (
+    <div className="payment-method-groups">
+      {paymentMethods.map((group) => (
+        <div key={group.group} className="payment-method-group">
+          <p className="payment-group-title">{group.group}</p>
+          <div className="payment-method-list">
+            {group.options.map((option) => (
+              <button
+                key={option.id}
+                className={`payment-method-card ${
+                  selectedPaymentMethod === option.id ? 'active' : ''
+                }`}
+                onClick={() => setSelectedPaymentMethod(option.id)}
+              >
+                <span className="payment-method-name">{option.label}</span>
+                <span className="payment-method-note">{option.note}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   const renderCheckout = () => (
     <main className="page-shell">
       <section className="checkout-layout">
@@ -1417,27 +1612,7 @@ function App() {
               Payment Method
             </span>
             <h2>Pilih metode pembayaran</h2>
-            <div className="payment-method-groups">
-              {paymentMethods.map((group) => (
-                <div key={group.group} className="payment-method-group">
-                  <p className="payment-group-title">{group.group}</p>
-                  <div className="payment-method-list">
-                    {group.options.map((option) => (
-                      <button
-                        key={option.id}
-                        className={`payment-method-card ${
-                          selectedPaymentMethod === option.id ? 'active' : ''
-                        }`}
-                        onClick={() => setSelectedPaymentMethod(option.id)}
-                      >
-                        <span className="payment-method-name">{option.label}</span>
-                        <span className="payment-method-note">{option.note}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+            {renderPaymentMethodSelector()}
           </div>
 
           <div className="summary-section">
@@ -1479,6 +1654,370 @@ function App() {
             Place Order
           </button>
         </aside>
+      </section>
+    </main>
+  );
+
+  const renderPayments = () => (
+    <main className="page-shell">
+      <section className="checkout-layout">
+        <div className="order-card">
+          <div className="section-header compact">
+            <div>
+              <span className="mini-badge">
+                <AppIcon type="wallet" className="badge-icon" />
+                Payment Settings
+              </span>
+              <h1>
+                {isAdminUser ? 'Atur metode pembayaran admin' : 'Pilih metode pembayaran'}
+              </h1>
+              <p>
+                {isAdminUser
+                  ? 'Metode yang dipilih di sini akan jadi preferensi default saat admin melakukan simulasi checkout.'
+                  : 'Pilih metode pembayaran favorit supaya checkout berikutnya lebih cepat.'}
+              </p>
+            </div>
+          </div>
+
+          {renderPaymentMethodSelector()}
+        </div>
+
+        <aside className="summary-card">
+          <span className="mini-badge">
+            <AppIcon type="spark" className="badge-icon" />
+            Payment Summary
+          </span>
+          <h2>Preferensi aktif</h2>
+          <div className="summary-row">
+            <span className="icon-text">
+              <AppIcon type="wallet" className="summary-icon" />
+              Metode terpilih
+            </span>
+            <strong>{activePaymentMethod?.label || 'Belum dipilih'}</strong>
+          </div>
+          <div className="summary-row">
+            <span className="icon-text">
+              <AppIcon type="products" className="summary-icon" />
+              Total opsi
+            </span>
+            <strong>
+              {paymentMethods.reduce((sum, group) => sum + group.options.length, 0)}
+            </strong>
+          </div>
+          <div className="empty-state left compact-empty-state payment-preference-note">
+            <h3>Disimpan otomatis</h3>
+            <p>
+              FreshCart akan menyimpan pilihan ini ke akun kamu supaya tidak perlu
+              memilih ulang setiap kali kembali.
+            </p>
+          </div>
+        </aside>
+      </section>
+    </main>
+  );
+
+  const renderAdminProducts = () => (
+    <main className="page-shell">
+      <section className="checkout-layout admin-products-layout">
+        <div className="order-card admin-product-form-card">
+          <div className="section-header compact">
+            <div>
+              <span className="mini-badge">
+                <AppIcon type="products" className="badge-icon" />
+                Product Manager
+              </span>
+              <h1>Tambah produk baru</h1>
+              <p>Lengkapi form ini untuk menambahkan item baru ke katalog FreshCart.</p>
+            </div>
+          </div>
+
+          <form className="admin-product-form" onSubmit={handleAdminProductSubmit}>
+            <div className="admin-product-form-grid">
+              <label className="field-group">
+                <span>Nama produk</span>
+                <input
+                  type="text"
+                  value={adminProductForm.name}
+                  onChange={(event) =>
+                    handleAdminProductFieldChange('name', event.target.value)
+                  }
+                  placeholder="Contoh: Alpukat Mentega"
+                />
+              </label>
+              <label className="field-group">
+                <span>Kategori</span>
+                <input
+                  type="text"
+                  value={adminProductForm.category}
+                  onChange={(event) =>
+                    handleAdminProductFieldChange('category', event.target.value)
+                  }
+                  placeholder="Buah Segar"
+                />
+              </label>
+              <label className="field-group">
+                <span>Harga</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={adminProductForm.price}
+                  onChange={(event) =>
+                    handleAdminProductFieldChange('price', event.target.value)
+                  }
+                  placeholder="28000"
+                />
+              </label>
+              <label className="field-group">
+                <span>Stok</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={adminProductForm.stock}
+                  onChange={(event) =>
+                    handleAdminProductFieldChange('stock', event.target.value)
+                  }
+                  placeholder="40"
+                />
+              </label>
+              <label className="field-group">
+                <span>Satuan</span>
+                <input
+                  type="text"
+                  value={adminProductForm.unit}
+                  onChange={(event) =>
+                    handleAdminProductFieldChange('unit', event.target.value)
+                  }
+                  placeholder="per kg"
+                />
+              </label>
+              <label className="field-group">
+                <span>Rating</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="5"
+                  step="0.1"
+                  value={adminProductForm.rating}
+                  onChange={(event) =>
+                    handleAdminProductFieldChange('rating', event.target.value)
+                  }
+                  placeholder="4.5"
+                />
+              </label>
+              <label className="field-group admin-product-form-full">
+                <span>URL gambar</span>
+                <input
+                  type="url"
+                  value={adminProductForm.image}
+                  onChange={(event) =>
+                    handleAdminProductFieldChange('image', event.target.value)
+                  }
+                  placeholder="https://..."
+                />
+              </label>
+              <label className="field-group admin-product-form-full">
+                <span>Deskripsi</span>
+                <input
+                  type="text"
+                  value={adminProductForm.description}
+                  onChange={(event) =>
+                    handleAdminProductFieldChange('description', event.target.value)
+                  }
+                  placeholder="Tulis deskripsi singkat produk"
+                />
+              </label>
+            </div>
+
+            <div className="admin-product-form-actions">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setAdminProductForm(createEmptyAdminProductForm())}
+              >
+                Reset Form
+              </button>
+              <button
+                type="submit"
+                className="primary-button"
+                disabled={isAdminProductSaving}
+              >
+                {isAdminProductSaving ? 'Saving...' : 'Add Product'}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <aside className="summary-card">
+          <span className="mini-badge">
+            <AppIcon type="products" className="badge-icon" />
+            Catalog Overview
+          </span>
+          <h2>Ringkasan katalog</h2>
+          <div className="summary-row">
+            <span className="icon-text">
+              <AppIcon type="products" className="summary-icon" />
+              Total produk
+            </span>
+            <strong>{adminProductList.length}</strong>
+          </div>
+          <div className="summary-row">
+            <span className="icon-text">
+              <AppIcon type="grid" className="summary-icon" />
+              Kategori aktif
+            </span>
+            <strong>{categories.filter((category) => category !== 'All').length}</strong>
+          </div>
+          <div className="summary-row">
+            <span className="icon-text">
+              <AppIcon type="stock" className="summary-icon" />
+              Total stok
+            </span>
+            <strong>
+              {adminProductList.reduce((sum, product) => sum + Number(product.stock || 0), 0)}
+            </strong>
+          </div>
+        </aside>
+      </section>
+
+      <section className="profile-card profile-section-card">
+        <div className="section-header compact">
+          <div>
+            <span className="mini-badge">
+              <AppIcon type="products" className="badge-icon" />
+              Product List
+            </span>
+            <h2>Produk aktif di FreshCart</h2>
+          </div>
+        </div>
+
+        {adminProductList.length > 0 ? (
+          <div className="admin-product-list">
+            {adminProductList.map((product) => (
+              <article key={product.id} className="admin-product-item">
+                <div className="admin-product-summary">
+                  <img src={product.image} alt={product.name} className="admin-product-thumb" />
+                  <div>
+                    <strong>{product.name}</strong>
+                    <p>
+                      {product.category} • Rp {currencyFormatter.format(product.price)} /{' '}
+                      {product.unit}
+                    </p>
+                    <span className="admin-product-description">{product.description}</span>
+                  </div>
+                </div>
+                <div className="admin-product-meta">
+                  <span>Stok {product.stock}</span>
+                  <span>Rating {product.rating}</span>
+                  <button
+                    className="secondary-button danger-button"
+                    onClick={() => handleAdminProductDelete(product)}
+                    disabled={deletingProductId === product.id}
+                  >
+                    {deletingProductId === product.id ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state left compact-empty-state">
+            <h3>Belum ada produk</h3>
+            <p>Tambahkan produk pertama dari form di atas untuk mulai mengisi katalog.</p>
+          </div>
+        )}
+      </section>
+    </main>
+  );
+
+  const renderAdminOrders = () => (
+    <main className="page-shell">
+      <section className="profile-card profile-section-card admin-orders-card standalone-admin-orders">
+        <div className="section-header compact profile-section-header">
+          <div>
+            <span className="mini-badge">
+              <AppIcon type="delivery" className="badge-icon" />
+              Admin Orders
+            </span>
+            <h2>Kelola status pesanan</h2>
+          </div>
+          <button
+            className="secondary-button"
+            onClick={loadAdminOrders}
+            disabled={isAdminOrdersLoading}
+          >
+            {isAdminOrdersLoading ? 'Refreshing...' : 'Refresh Orders'}
+          </button>
+        </div>
+
+        {adminOrdersError ? <div className="form-error">{adminOrdersError}</div> : null}
+
+        {isAdminOrdersLoading && adminOrders.length === 0 ? (
+          <div className="empty-state left compact-empty-state">
+            <h3>Loading orders</h3>
+            <p>Sedang mengambil pesanan terbaru dari Firestore.</p>
+          </div>
+        ) : null}
+
+        {!isAdminOrdersLoading && adminOrders.length === 0 ? (
+          <div className="empty-state left compact-empty-state">
+            <h3>Belum ada pesanan</h3>
+            <p>Order baru yang masuk akan tampil di panel admin ini.</p>
+          </div>
+        ) : null}
+
+        {adminOrders.length > 0 ? (
+          <div className="admin-order-list">
+            {adminOrders.map((order) => {
+              const statusMeta = getOrderStatusMeta(order.status);
+              const visibleOrderActions =
+                order.status === 'completed' ? ['completed'] : orderStatusOptions;
+
+              return (
+                <article key={order.id} className="admin-order-item">
+                  <div className="order-history-top">
+                    <div>
+                      <strong className="order-history-id">{order.id}</strong>
+                      <p className="order-history-date">{order.userEmail || order.userId}</p>
+                    </div>
+                    <span className={`order-status-pill ${statusMeta.className}`}>
+                      {statusMeta.label}
+                    </span>
+                  </div>
+
+                  <div className="order-history-meta">
+                    <span>{dateTimeFormatter.format(new Date(order.createdAt))}</span>
+                    <span>{order.totalItems} item</span>
+                    <strong>Rp {currencyFormatter.format(order.totalPrice || 0)}</strong>
+                  </div>
+
+                  <div className="admin-order-actions">
+                    {visibleOrderActions.map((status) => (
+                      <button
+                        key={`${order.id}-${status}`}
+                        className={`status-action-button ${
+                          order.status === status ? 'active' : ''
+                        }`}
+                        data-status={status}
+                        onClick={() => handleAdminOrderStatusChange(order.id, status)}
+                        disabled={
+                          order.status === status || orderStatusUpdatingId === order.id
+                        }
+                      >
+                        {status === 'accepted'
+                          ? 'Accept'
+                          : status === 'processing'
+                            ? 'Process'
+                            : status === 'completed'
+                              ? 'Complete'
+                              : 'Cancel'}
+                      </button>
+                    ))}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : null}
       </section>
     </main>
   );
@@ -1560,6 +2099,22 @@ function App() {
             </div>
           </div>
           <div className="profile-action-buttons">
+            {isAdminUser ? (
+              <>
+                <button
+                  className="secondary-button full-width"
+                  onClick={() => navigateTo('admin-products')}
+                >
+                  Manage Products
+                </button>
+                <button
+                  className="secondary-button full-width"
+                  onClick={() => navigateTo('admin-orders')}
+                >
+                  Manage Orders
+                </button>
+              </>
+            ) : null}
             <button className="secondary-button full-width" onClick={() => navigateTo('home')}>
               Back to Home
             </button>
@@ -1629,108 +2184,6 @@ function App() {
             </div>
           )}
         </div>
-
-        {isAdminUser ? (
-          <div className="profile-card profile-section-card admin-orders-card">
-            <div className="section-header compact profile-section-header">
-              <div>
-                <span className="mini-badge">
-                  <AppIcon type="delivery" className="badge-icon" />
-                  Admin Orders
-                </span>
-                <h2>Kelola status pesanan</h2>
-              </div>
-              <button
-                className="secondary-button"
-                onClick={loadAdminOrders}
-                disabled={isAdminOrdersLoading}
-              >
-                {isAdminOrdersLoading ? 'Refreshing...' : 'Refresh Orders'}
-              </button>
-            </div>
-
-            {adminOrdersError ? (
-              <div className="form-error">{adminOrdersError}</div>
-            ) : null}
-
-            {isAdminOrdersLoading && adminOrders.length === 0 ? (
-              <div className="empty-state left compact-empty-state">
-                <h3>Loading orders</h3>
-                <p>Sedang mengambil pesanan terbaru dari Firestore.</p>
-              </div>
-            ) : null}
-
-            {!isAdminOrdersLoading && adminOrders.length === 0 ? (
-              <div className="empty-state left compact-empty-state">
-                <h3>Belum ada pesanan</h3>
-                <p>Order baru yang masuk akan tampil di panel admin ini.</p>
-              </div>
-            ) : null}
-
-            {adminOrders.length > 0 ? (
-              <div className="admin-order-list">
-                {adminOrders.map((order) => {
-                  const statusMeta = getOrderStatusMeta(order.status);
-                  const visibleOrderActions =
-                    order.status === 'completed'
-                      ? ['completed']
-                      : orderStatusOptions;
-
-                  return (
-                    <article key={order.id} className="admin-order-item">
-                      <div className="order-history-top">
-                        <div>
-                          <strong className="order-history-id">{order.id}</strong>
-                          <p className="order-history-date">
-                            {order.userEmail || order.userId}
-                          </p>
-                        </div>
-                        <span className={`order-status-pill ${statusMeta.className}`}>
-                          {statusMeta.label}
-                        </span>
-                      </div>
-
-                      <div className="order-history-meta">
-                        <span>
-                          {dateTimeFormatter.format(new Date(order.createdAt))}
-                        </span>
-                        <span>{order.totalItems} item</span>
-                        <strong>Rp {currencyFormatter.format(order.totalPrice || 0)}</strong>
-                      </div>
-
-                      <div className="admin-order-actions">
-                        {visibleOrderActions.map((status) => (
-                          <button
-                            key={`${order.id}-${status}`}
-                            className={`status-action-button ${
-                              order.status === status ? 'active' : ''
-                            }`}
-                            data-status={status}
-                            onClick={() =>
-                              handleAdminOrderStatusChange(order.id, status)
-                            }
-                            disabled={
-                              order.status === status ||
-                              orderStatusUpdatingId === order.id
-                            }
-                          >
-                            {status === 'accepted'
-                              ? 'Accept'
-                              : status === 'processing'
-                                ? 'Process'
-                                : status === 'completed'
-                                  ? 'Complete'
-                                  : 'Cancel'}
-                          </button>
-                        ))}
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
       </section>
     </main>
   );
@@ -1739,10 +2192,16 @@ function App() {
     switch (currentView) {
       case 'wishlist':
         return renderWishlist();
+      case 'payments':
+        return renderPayments();
       case 'cart':
         return renderCart();
       case 'checkout':
         return renderCheckout();
+      case 'admin-products':
+        return isAdminUser ? renderAdminProducts() : renderHome();
+      case 'admin-orders':
+        return isAdminUser ? renderAdminOrders() : renderHome();
       case 'profile':
         return renderProfile();
       case 'detail':
@@ -1809,6 +2268,7 @@ function App() {
           user={user}
           theme={theme}
           onToggleTheme={toggleTheme}
+          navItems={isAdminUser ? adminNavItems : undefined}
         />
         {renderAuthenticatedView()}
         <Footer user={user} onNavigate={navigateTo} />

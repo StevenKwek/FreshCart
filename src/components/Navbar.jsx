@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import AppIcon from './AppIcon';
 
-const navItems = [
-  { key: 'home', label: 'Home' },
-  { key: 'wishlist', label: 'Wishlist' },
-  { key: 'cart', label: 'Cart' },
-  { key: 'checkout', label: 'Checkout' },
+const defaultNavItems = [
+  { key: 'home', label: 'Home', icon: 'home' },
+  { key: 'wishlist', label: 'Wishlist', icon: 'wishlist' },
+  { key: 'cart', label: 'Cart', icon: 'cart' },
+  { key: 'checkout', label: 'Checkout', icon: 'checkout' },
 ];
 
 function Icon({ type, className = '' }) {
@@ -96,6 +96,61 @@ function Icon({ type, className = '' }) {
         />
       </svg>
     ),
+    products: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect
+          x="4.5"
+          y="6"
+          width="15"
+          height="12.5"
+          rx="2.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+        />
+        <path
+          d="M8 6V4.8A1.8 1.8 0 0 1 9.8 3h4.4A1.8 1.8 0 0 1 16 4.8V6"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+    payment: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          d="M5.5 7.5h13A1.5 1.5 0 0 1 20 9v7a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 16V9a1.5 1.5 0 0 1 1.5-1.5Z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+        />
+        <path
+          d="M15 12.5h5M16.5 12.5a.5.5 0 1 0 0 .01"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+    orders: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          d="M7 4.5h10A1.5 1.5 0 0 1 18.5 6v12A1.5 1.5 0 0 1 17 19.5H7A1.5 1.5 0 0 1 5.5 18V6A1.5 1.5 0 0 1 7 4.5Z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+        />
+        <path
+          d="M8.5 9h7M8.5 12h7M8.5 15h4.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
   };
 
   return <span className={className}>{icons[type]}</span>;
@@ -109,6 +164,7 @@ function Navbar({
   user,
   theme,
   onToggleTheme,
+  navItems = defaultNavItems,
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const username = (user?.username || user?.name || 'guest')
@@ -126,7 +182,7 @@ function Navbar({
     <header className="navbar">
       <div className="brand-group">
         <div className="brand-row">
-          <button className="brand-button" onClick={() => handleNavigate('home')}>
+          <button className="brand-button" onClick={() => handleNavigate(navItems[0]?.key || 'home')}>
             <span className="brand-mark">
               <Icon type="brand" className="brand-icon" />
             </span>
@@ -157,7 +213,7 @@ function Navbar({
             className={`nav-link ${currentView === item.key ? 'active' : ''}`}
             onClick={() => handleNavigate(item.key)}
           >
-            <Icon type={item.key} className="nav-icon" />
+            <Icon type={item.icon || item.key} className="nav-icon" />
             {item.label}
             {item.key === 'wishlist' && wishlistCount > 0 ? (
               <span className="nav-badge">{wishlistCount}</span>
@@ -198,7 +254,7 @@ function Navbar({
               className={`mobile-menu-link ${currentView === item.key ? 'active' : ''}`}
               onClick={() => handleNavigate(item.key)}
             >
-              <Icon type={item.key} className="nav-icon" />
+              <Icon type={item.icon || item.key} className="nav-icon" />
               <span>{item.label}</span>
               {item.key === 'wishlist' && wishlistCount > 0 ? (
                 <span className="nav-badge">{wishlistCount}</span>
