@@ -162,8 +162,13 @@ const buildSmoothLinePath = (points) => {
   return path;
 };
 
+const normalizeOrderStatusValue = (status) =>
+  typeof status === 'string' ? status.trim().toLowerCase() : 'pending';
+
 const getOrderStatusMeta = (status) => {
-  switch (status) {
+  const normalizedStatus = normalizeOrderStatusValue(status);
+
+  switch (normalizedStatus) {
     case 'accepted':
       return {
         label: 'Accepted',
@@ -179,6 +184,7 @@ const getOrderStatusMeta = (status) => {
         label: 'Completed',
         className: 'completed',
       };
+    case 'canceled':
     case 'cancelled':
       return {
         label: 'Cancelled',
@@ -193,10 +199,22 @@ const getOrderStatusMeta = (status) => {
   }
 };
 
-const canUserCancelOrderStatus = (status) => status === 'pending' || status === 'accepted';
+const canUserCancelOrderStatus = (status) => {
+  const normalizedStatus = normalizeOrderStatusValue(status);
+  return normalizedStatus === 'pending' || normalizedStatus === 'accepted';
+};
 const getOrderStatusValue = (order) =>
-  typeof order?.status === 'string' ? order.status.trim().toLowerCase() : 'pending';
-const getOrderTotalPrice = (order) => Number(order?.totalPrice || 0);
+  normalizeOrderStatusValue(order?.status);
+const getOrderTotalPrice = (order) => {
+  if (Array.isArray(order?.items) && order.items.length > 0) {
+    return order.items.reduce(
+      (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0),
+      0,
+    );
+  }
+
+  return Number(order?.totalPrice || 0);
+};
 const getOrderTotalItems = (order) => {
   if (Array.isArray(order?.items) && order.items.length > 0) {
     return order.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
@@ -205,7 +223,7 @@ const getOrderTotalItems = (order) => {
   return Number(order?.totalItems || 0);
 };
 const isCancelledOrder = (order) =>
-  ['cancelled', 'canceled'].includes(getOrderStatusValue(order));
+  ['cancelled', 'canceled', 'cancel'].includes(getOrderStatusValue(order));
 
 function App() {
   const useFirebase = firebaseEnabled;
@@ -1173,7 +1191,7 @@ function App() {
 
     try {
       const items = Array.isArray(order.items) ? order.items : [];
-      const orderTotal = Number(order.totalPrice || 0);
+      const orderTotal = getOrderTotalPrice(order);
 
       setInventory((current) =>
         current.map((product) => {
@@ -1659,7 +1677,9 @@ function App() {
                   <AppIcon type="delivery" className="content-icon" />
                 </span>
                 <strong>
-                  {visibleAdminOrders.filter((order) => order.status === 'pending').length}
+                  {visibleAdminOrders.filter(
+                    (order) => getOrderStatusValue(order) === 'pending',
+                  ).length}
                 </strong>
                 <span>Pending orders</span>
               </div>
@@ -1939,7 +1959,7 @@ function App() {
           {filteredStatsOrders.length > 0 ? (
             <div className="analytics-order-list">
               {filteredStatsOrders.map((order) => {
-                const amount = Number(order.totalPrice || 0);
+                const amount = getOrderTotalPrice(order);
                 const width = maxStatsOrderValue > 0 ? (amount / maxStatsOrderValue) * 100 : 0;
 
                 return (
@@ -2781,9 +2801,10 @@ function App() {
         {visibleAdminOrders.length > 0 ? (
           <div className="admin-order-list">
             {visibleAdminOrders.map((order) => {
-              const statusMeta = getOrderStatusMeta(order.status);
+              const normalizedOrderStatus = getOrderStatusValue(order);
+              const statusMeta = getOrderStatusMeta(normalizedOrderStatus);
               const visibleOrderActions =
-                order.status === 'completed' ? ['completed'] : orderStatusOptions;
+                normalizedOrderStatus === 'completed' ? ['completed'] : orderStatusOptions;
 
               return (
                 <article key={order.id} className="admin-order-item">
@@ -2800,7 +2821,7 @@ function App() {
                   <div className="order-history-meta">
                     <span>{dateTimeFormatter.format(new Date(order.createdAt))}</span>
                     <span>{getOrderTotalItems(order)} item</span>
-                    <strong>Rp {currencyFormatter.format(order.totalPrice || 0)}</strong>
+                    <strong>Rp {currencyFormatter.format(getOrderTotalPrice(order))}</strong>
                   </div>
 
                   <div className="admin-order-actions">
@@ -2808,12 +2829,12 @@ function App() {
                       <button
                         key={`${order.id}-${status}`}
                         className={`status-action-button ${
-                          order.status === status ? 'active' : ''
+                          normalizedOrderStatus === status ? 'active' : ''
                         }`}
                         data-status={status}
                         onClick={() => handleAdminOrderStatusChange(order.id, status)}
                         disabled={
-                          order.status === status || orderStatusUpdatingId === order.id
+                          normalizedOrderStatus === status || orderStatusUpdatingId === order.id
                         }
                       >
                         {status === 'accepted'
@@ -2970,7 +2991,7 @@ function App() {
                     <div className="order-history-meta">
                       <span>Payment: {order.paymentMethod}</span>
                       <span>{getOrderTotalItems(order)} item</span>
-                      <strong>Rp {currencyFormatter.format(order.totalPrice || 0)}</strong>
+                      <strong>Rp {currencyFormatter.format(getOrderTotalPrice(order))}</strong>
                     </div>
 
                     <div className="order-history-items">
@@ -2987,7 +3008,7 @@ function App() {
                       ))}
                     </div>
 
-                    {canUserCancelOrderStatus(order.status || 'pending') ? (
+                    {canUserCancelOrderStatus(getOrderStatusValue(order)) ? (
                       <div className="order-history-actions">
                         <button
                           className="status-action-button"
