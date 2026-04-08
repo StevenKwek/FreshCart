@@ -1591,6 +1591,12 @@ img {
   gap: 16px;
   flex-wrap: wrap;
   margin-top: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.analytics-control-row > * {
+  min-width: 0;
 }
 
 .analytics-calendar-field {
@@ -1598,6 +1604,8 @@ img {
   gap: 10px;
   width: min(100%, 340px);
   min-width: 0;
+  max-width: 100%;
+  position: relative;
 }
 
 .analytics-calendar-field span {
@@ -1606,7 +1614,10 @@ img {
 }
 
 .analytics-calendar-field input {
+  display: block;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 66px;
   padding-inline: 20px 54px;
   border-radius: 22px;
@@ -1616,11 +1627,24 @@ img {
   color-scheme: light;
   box-shadow: 0 14px 30px rgba(21, 53, 34, 0.06);
   box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.analytics-calendar-field input::-webkit-date-and-time-value,
+.analytics-calendar-field input::-webkit-datetime-edit {
+  min-width: 0;
+  padding: 0;
+  text-align: left;
 }
 
 .analytics-calendar-field input::-webkit-calendar-picker-indicator {
   cursor: pointer;
   opacity: 0.85;
+  position: absolute;
+  right: 18px;
 }
 
 .analytics-summary-grid {
@@ -3321,12 +3345,17 @@ body.theme-dark {
 
   .analytics-calendar-field {
     width: 100%;
+    max-width: 100%;
   }
 
   .analytics-calendar-field input {
     min-height: 58px;
     padding-inline: 16px 50px;
     border-radius: 18px;
+  }
+
+  .analytics-calendar-field input::-webkit-calendar-picker-indicator {
+    right: 14px;
   }
 
   .toolbar {
