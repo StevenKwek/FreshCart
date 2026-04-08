@@ -953,9 +953,9 @@ img {
 }
 
 .wishlist-grid {
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 320px));
   gap: 20px;
-  justify-content: stretch;
+  justify-content: flex-start;
 }
 
 .product-card {
@@ -971,9 +971,9 @@ img {
 }
 
 .wishlist-card {
-  max-width: 340px;
+  max-width: none;
   width: 100%;
-  justify-self: stretch;
+  justify-self: auto;
 }
 
 .wishlist-button {
