@@ -1594,7 +1594,10 @@ img {
 }
 
 .analytics-calendar-field {
-  min-width: min(100%, 260px);
+  display: grid;
+  gap: 10px;
+  width: min(100%, 340px);
+  min-width: 0;
 }
 
 .analytics-calendar-field span {
@@ -1603,14 +1606,16 @@ img {
 }
 
 .analytics-calendar-field input {
+  width: 100%;
   min-height: 66px;
-  padding-inline: 20px;
+  padding-inline: 20px 54px;
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.92);
   color: #173225;
   border-color: rgba(132, 160, 139, 0.2);
   color-scheme: light;
   box-shadow: 0 14px 30px rgba(21, 53, 34, 0.06);
+  box-sizing: border-box;
 }
 
 .analytics-calendar-field input::-webkit-calendar-picker-indicator {
@@ -3315,11 +3320,13 @@ body.theme-dark {
   }
 
   .analytics-calendar-field {
-    min-width: 100%;
+    width: 100%;
   }
 
   .analytics-calendar-field input {
-    min-height: 60px;
+    min-height: 58px;
+    padding-inline: 16px 50px;
+    border-radius: 18px;
   }
 
   .toolbar {
