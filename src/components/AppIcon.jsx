@@ -23,6 +23,27 @@ function AppIcon({ type, className = '' }) {
         />
       </>
     ),
+    calendar: (
+      <>
+        <rect
+          x="4.5"
+          y="5.5"
+          width="15"
+          height="14"
+          rx="2.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+        />
+        <path
+          d="M8 3.8v3.6M16 3.8v3.6M4.5 9.2h15"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+      </>
+    ),
     spark: (
       <path
         d="m12 3 1.7 4.7L18.5 9l-4.8 1.3L12 15l-1.7-4.7L5.5 9l4.8-1.3ZM18 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8ZM5.5 15.5l1 2.8 2.8 1-2.8 1-1 2.8-1-2.8-2.8-1 2.8-1Z"

@@ -64,6 +64,11 @@ const dateTimeFormatter = new Intl.DateTimeFormat('id-ID', {
 const monthShortFormatter = new Intl.DateTimeFormat('id-ID', {
   month: 'short',
 });
+const anchorDateFormatter = new Intl.DateTimeFormat('id-ID', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+});
 const inventorySeedVersion = createInventorySeedVersion(initialProducts);
 const landingFeatureHighlights = [
   {
@@ -1791,21 +1796,30 @@ function App() {
             <div className="analytics-control-row">
               <label className="analytics-calendar-field field-group">
                 <span>Tanggal acuan</span>
-                <input
-                  type="date"
-                  value={formatDateInputValue(statsAnchorDate)}
-                  onChange={(event) => {
-                    if (!event.target.value) {
-                      return;
-                    }
+                <span className="analytics-calendar-shell">
+                  <span className="analytics-calendar-display">
+                    {anchorDateFormatter.format(statsAnchorDate)}
+                  </span>
+                  <span className="analytics-calendar-icon" aria-hidden="true">
+                    <AppIcon type="calendar" className="content-icon" />
+                  </span>
+                  <input
+                    type="date"
+                    aria-label="Tanggal acuan"
+                    value={formatDateInputValue(statsAnchorDate)}
+                    onChange={(event) => {
+                      if (!event.target.value) {
+                        return;
+                      }
 
-                    const nextDate = new Date(`${event.target.value}T00:00:00`);
+                      const nextDate = new Date(`${event.target.value}T00:00:00`);
 
-                    if (!Number.isNaN(nextDate.getTime())) {
-                      setStatsAnchorDate(nextDate);
-                    }
-                  }}
-                />
+                      if (!Number.isNaN(nextDate.getTime())) {
+                        setStatsAnchorDate(nextDate);
+                      }
+                    }}
+                  />
+                </span>
               </label>
             </div>
 

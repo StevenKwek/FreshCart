@@ -1605,7 +1605,6 @@ img {
   width: min(100%, 340px);
   min-width: 0;
   max-width: 100%;
-  position: relative;
 }
 
 .analytics-calendar-field span {
@@ -1613,38 +1612,79 @@ img {
   color: #163728;
 }
 
-.analytics-calendar-field input {
-  display: block;
+.analytics-calendar-shell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
   width: 100%;
-  max-width: 100%;
   min-width: 0;
   min-height: 66px;
-  padding-inline: 20px 54px;
+  padding: 0 18px 0 20px;
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.92);
-  color: #173225;
-  border-color: rgba(132, 160, 139, 0.2);
-  color-scheme: light;
+  border: 1px solid rgba(132, 160, 139, 0.2);
   box-shadow: 0 14px 30px rgba(21, 53, 34, 0.06);
   box-sizing: border-box;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 1rem;
-  line-height: 1.2;
 }
 
-.analytics-calendar-field input::-webkit-date-and-time-value,
-.analytics-calendar-field input::-webkit-datetime-edit {
+.analytics-calendar-shell:focus-within {
+  border-color: rgba(43, 151, 83, 0.55);
+  box-shadow:
+    0 0 0 4px rgba(60, 181, 102, 0.12),
+    0 14px 30px rgba(21, 53, 34, 0.06);
+}
+
+.analytics-calendar-display {
+  flex: 1;
   min-width: 0;
+  color: #173225;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.analytics-calendar-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: rgba(29, 124, 69, 0.08);
+  color: #1f7746;
+  flex-shrink: 0;
+}
+
+.analytics-calendar-field input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+  border: 0;
   padding: 0;
-  text-align: left;
+  margin: 0;
+  background: transparent;
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .analytics-calendar-field input::-webkit-calendar-picker-indicator {
-  cursor: pointer;
-  opacity: 0.85;
   position: absolute;
-  right: 18px;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .analytics-summary-grid {
@@ -2540,7 +2580,7 @@ body.theme-dark {
 .app-shell.dark-theme .analytics-order-meta,
 .app-shell.dark-theme .pivot-section-header,
 .app-shell.dark-theme .analytics-calendar-field span,
-.app-shell.dark-theme .analytics-calendar-field input,
+.app-shell.dark-theme .analytics-calendar-display,
 .app-shell.dark-theme .pivot-chart-copy,
 .app-shell.dark-theme .pivot-chart-xlabels,
 .app-shell.dark-theme .pivot-chart-caption,
@@ -2556,6 +2596,7 @@ body.theme-dark {
 .app-shell.dark-theme .admin-payment-group-card,
 .app-shell.dark-theme .admin-payment-option,
 .app-shell.dark-theme .analytics-order-card,
+.app-shell.dark-theme .analytics-calendar-shell,
 .app-shell.dark-theme .pivot-chart-card {
   background: rgba(21, 31, 26, 0.9);
   border-color: rgba(117, 153, 130, 0.16);
@@ -2604,6 +2645,11 @@ body.theme-dark {
 
 .app-shell.dark-theme .pivot-chart-tooltip strong {
   color: #edf6ef;
+}
+
+.app-shell.dark-theme .analytics-calendar-icon {
+  background: rgba(67, 120, 86, 0.18);
+  color: #86d1a1;
 }
 
 .app-shell.dark-theme .analytics-order-bar-shell {
@@ -3348,14 +3394,20 @@ body.theme-dark {
     max-width: 100%;
   }
 
-  .analytics-calendar-field input {
+  .analytics-calendar-shell {
     min-height: 58px;
-    padding-inline: 16px 50px;
+    padding: 0 14px 0 16px;
     border-radius: 18px;
   }
 
-  .analytics-calendar-field input::-webkit-calendar-picker-indicator {
-    right: 14px;
+  .analytics-calendar-display {
+    font-size: 0.96rem;
+  }
+
+  .analytics-calendar-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
   }
 
   .toolbar {
