@@ -5,7 +5,10 @@ import Footer from './components/Footer';
 import Navbar from './components/Navbar';
 import ProductCard from './components/ProductCard';
 import Toast from './components/Toast';
-import { paymentMethods } from './constants/paymentMethods';
+import {
+  defaultPaymentMethods,
+  normalizePaymentMethodsData,
+} from './constants/paymentMethods';
 import { products as initialProducts } from './data/products';
 import {
   createLocalAccount,
@@ -29,9 +32,12 @@ import {
 import {
   checkoutWithFirebaseApi,
   createAdminProduct,
+  createAdminPaymentMethod,
   deleteAdminProduct,
+  deleteAdminPaymentMethod,
   ensureRemoteUserProfile,
   fetchAdminOrders,
+  fetchPaymentMethods,
   firebaseEnabled,
   loginWithFirebase,
   logoutFirebaseUser,
@@ -74,13 +80,19 @@ const landingFeatureHighlights = [
 ];
 
 const orderStatusOptions = ['accepted', 'processing', 'completed', 'cancelled'];
+const userNavItems = [
+  { key: 'home', label: 'Home', icon: 'home' },
+  { key: 'products', label: 'Products', icon: 'products' },
+  { key: 'wishlist', label: 'Wishlist', icon: 'wishlist' },
+  { key: 'cart', label: 'Cart', icon: 'cart' },
+  { key: 'checkout', label: 'Checkout', icon: 'checkout' },
+];
 const adminNavItems = [
   { key: 'home', label: 'Dashboard', icon: 'home' },
   { key: 'admin-products', label: 'Products', icon: 'products' },
   { key: 'admin-orders', label: 'Orders', icon: 'orders' },
   { key: 'wishlist', label: 'Wishlist', icon: 'wishlist' },
   { key: 'payments', label: 'Payments', icon: 'payment' },
-  { key: 'cart', label: 'Cart', icon: 'cart' },
 ];
 const createEmptyAdminProductForm = () => ({
   name: '',
@@ -91,6 +103,11 @@ const createEmptyAdminProductForm = () => ({
   rating: '4.5',
   image: '',
   description: '',
+});
+const createEmptyAdminPaymentForm = () => ({
+  group: '',
+  label: '',
+  note: '',
 });
 
 const getOrderStatusMeta = (status) => {
@@ -177,6 +194,9 @@ function App() {
   const [purchaseHistoryByUser, setPurchaseHistoryByUser] = useState(() =>
     getStoredValue('freshcart-purchases-by-user', {}),
   );
+  const [paymentMethodGroups, setPaymentMethodGroups] = useState(
+    defaultPaymentMethods,
+  );
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(() =>
     getScopedStoredValue(initialPaymentByUserState, initialUserState, ''),
   );
@@ -197,6 +217,9 @@ function App() {
   const [adminProductForm, setAdminProductForm] = useState(createEmptyAdminProductForm);
   const [isAdminProductSaving, setIsAdminProductSaving] = useState(false);
   const [deletingProductId, setDeletingProductId] = useState(null);
+  const [adminPaymentForm, setAdminPaymentForm] = useState(createEmptyAdminPaymentForm);
+  const [isAdminPaymentSaving, setIsAdminPaymentSaving] = useState(false);
+  const [deletingPaymentMethodId, setDeletingPaymentMethodId] = useState('');
   const syncErrorShownRef = useRef(false);
   const skipRemoteSyncRef = useRef(false);
   const startupSplashTimerRef = useRef(null);
@@ -600,6 +623,20 @@ function App() {
   }, [activeCategory, categories]);
 
   useEffect(() => {
+    if (!selectedPaymentMethod) {
+      return;
+    }
+
+    const availableMethodIds = new Set(
+      paymentMethodGroups.flatMap((group) => group.options.map((option) => option.id)),
+    );
+
+    if (!availableMethodIds.has(selectedPaymentMethod)) {
+      setSelectedPaymentMethod('');
+    }
+  }, [paymentMethodGroups, selectedPaymentMethod]);
+
+  useEffect(() => {
     if (
       selectedProductId &&
       !inventory.some((product) => product.id === selectedProductId)
@@ -623,6 +660,33 @@ function App() {
 
     loadAdminOrders();
   }, [currentView, firebaseAuthUser, isAdminUser, useFirebase]);
+
+  useEffect(() => {
+    if (
+      !useFirebase ||
+      (typeof window !== 'undefined' &&
+        window.location.hostname === 'localhost' &&
+        window.location.port === '5173')
+    ) {
+      return;
+    }
+
+    let isMounted = true;
+
+    fetchPaymentMethods()
+      .then((groups) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setPaymentMethodGroups(normalizePaymentMethodsData(groups));
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, [useFirebase]);
 
   const selectedProduct =
     inventory.find((product) => product.id === selectedProductId) || null;
@@ -799,7 +863,7 @@ function App() {
   const purchaseHistory = useFirebase
     ? remoteProfile?.purchaseHistory || []
     : getScopedStoredValue(purchaseHistoryByUser, userKey, []);
-  const activePaymentMethod = paymentMethods
+  const activePaymentMethod = paymentMethodGroups
     .flatMap((group) => group.options)
     .find((option) => option.id === selectedPaymentMethod);
 
@@ -942,6 +1006,79 @@ function App() {
       );
     } finally {
       setDeletingProductId(null);
+    }
+  };
+
+  const handleAdminPaymentFieldChange = (field, value) => {
+    setAdminPaymentForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const handleAdminPaymentSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!firebaseAuthUser) {
+      showToast('Please login again before managing payment methods.', 'warning');
+      return;
+    }
+
+    setIsAdminPaymentSaving(true);
+
+    try {
+      const nextGroups = await createAdminPaymentMethod({
+        firebaseUser: firebaseAuthUser,
+        group: adminPaymentForm.group,
+        label: adminPaymentForm.label,
+        note: adminPaymentForm.note,
+      });
+      setPaymentMethodGroups(normalizePaymentMethodsData(nextGroups));
+      setAdminPaymentForm(createEmptyAdminPaymentForm());
+      showToast('Metode pembayaran baru berhasil ditambahkan.');
+    } catch (error) {
+      showToast(
+        error instanceof Error
+          ? error.message
+          : 'Failed to create the payment method.',
+        'warning',
+      );
+    } finally {
+      setIsAdminPaymentSaving(false);
+    }
+  };
+
+  const handleAdminPaymentDelete = async (option) => {
+    if (!firebaseAuthUser) {
+      showToast('Please login again before managing payment methods.', 'warning');
+      return;
+    }
+
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm(`Hapus metode pembayaran "${option.label}"?`)
+    ) {
+      return;
+    }
+
+    setDeletingPaymentMethodId(option.id);
+
+    try {
+      const nextGroups = await deleteAdminPaymentMethod({
+        firebaseUser: firebaseAuthUser,
+        methodId: option.id,
+      });
+      setPaymentMethodGroups(normalizePaymentMethodsData(nextGroups));
+      showToast(`${option.label} berhasil dihapus.`, 'info');
+    } catch (error) {
+      showToast(
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete the payment method.',
+        'warning',
+      );
+    } finally {
+      setDeletingPaymentMethodId('');
     }
   };
 
@@ -1241,7 +1378,10 @@ function App() {
                   <AppIcon type="wallet" className="content-icon" />
                 </span>
                 <strong>
-                  {paymentMethods.reduce((sum, group) => sum + group.options.length, 0)}
+                  {paymentMethodGroups.reduce(
+                    (sum, group) => sum + group.options.length,
+                    0,
+                  )}
                 </strong>
                 <span>Payment options</span>
               </div>
@@ -1547,7 +1687,7 @@ function App() {
 
   const renderPaymentMethodSelector = () => (
     <div className="payment-method-groups">
-      {paymentMethods.map((group) => (
+      {paymentMethodGroups.map((group) => (
         <div key={group.group} className="payment-method-group">
           <p className="payment-group-title">{group.group}</p>
           <div className="payment-method-list">
@@ -1680,6 +1820,75 @@ function App() {
           </div>
 
           {renderPaymentMethodSelector()}
+
+          {isAdminUser ? (
+            <div className="admin-payment-manager">
+              <div className="section-header compact admin-payment-header">
+                <div>
+                  <span className="mini-badge">
+                    <AppIcon type="payment" className="badge-icon" />
+                    Admin Controls
+                  </span>
+                  <h2>Tambah metode pembayaran baru</h2>
+                </div>
+              </div>
+
+              <form className="admin-payment-form" onSubmit={handleAdminPaymentSubmit}>
+                <div className="admin-product-form-grid">
+                  <label className="field-group">
+                    <span>Group</span>
+                    <input
+                      type="text"
+                      value={adminPaymentForm.group}
+                      onChange={(event) =>
+                        handleAdminPaymentFieldChange('group', event.target.value)
+                      }
+                      placeholder="Contoh: COD atau Virtual Account"
+                    />
+                  </label>
+                  <label className="field-group">
+                    <span>Label</span>
+                    <input
+                      type="text"
+                      value={adminPaymentForm.label}
+                      onChange={(event) =>
+                        handleAdminPaymentFieldChange('label', event.target.value)
+                      }
+                      placeholder="Contoh: QRIS"
+                    />
+                  </label>
+                  <label className="field-group admin-product-form-full">
+                    <span>Note</span>
+                    <input
+                      type="text"
+                      value={adminPaymentForm.note}
+                      onChange={(event) =>
+                        handleAdminPaymentFieldChange('note', event.target.value)
+                      }
+                      placeholder="Catatan singkat untuk user"
+                    />
+                  </label>
+                </div>
+
+                <div className="admin-product-form-actions">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => setAdminPaymentForm(createEmptyAdminPaymentForm())}
+                  >
+                    Reset Form
+                  </button>
+                  <button
+                    type="submit"
+                    className="primary-button"
+                    disabled={isAdminPaymentSaving}
+                  >
+                    {isAdminPaymentSaving ? 'Saving...' : 'Add Payment Method'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : null}
         </div>
 
         <aside className="summary-card">
@@ -1701,7 +1910,7 @@ function App() {
               Total opsi
             </span>
             <strong>
-              {paymentMethods.reduce((sum, group) => sum + group.options.length, 0)}
+              {paymentMethodGroups.reduce((sum, group) => sum + group.options.length, 0)}
             </strong>
           </div>
           <div className="empty-state left compact-empty-state payment-preference-note">
@@ -1713,6 +1922,48 @@ function App() {
           </div>
         </aside>
       </section>
+
+      {isAdminUser ? (
+        <section className="profile-card profile-section-card">
+          <div className="section-header compact">
+            <div>
+              <span className="mini-badge">
+                <AppIcon type="payment" className="badge-icon" />
+                Payment List
+              </span>
+              <h2>Metode pembayaran aktif</h2>
+            </div>
+          </div>
+
+          <div className="admin-payment-list">
+            {paymentMethodGroups.map((group) => (
+              <div key={group.group} className="admin-payment-group-card">
+                <div className="admin-payment-group-header">
+                  <strong>{group.group}</strong>
+                  <span>{group.options.length} metode</span>
+                </div>
+                <div className="admin-payment-option-list">
+                  {group.options.map((option) => (
+                    <article key={option.id} className="admin-payment-option">
+                      <div>
+                        <strong>{option.label}</strong>
+                        <p>{option.note}</p>
+                      </div>
+                      <button
+                        className="secondary-button danger-button"
+                        onClick={() => handleAdminPaymentDelete(option)}
+                        disabled={deletingPaymentMethodId === option.id}
+                      >
+                        {deletingPaymentMethodId === option.id ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 
@@ -2192,6 +2443,8 @@ function App() {
     switch (currentView) {
       case 'wishlist':
         return renderWishlist();
+      case 'products':
+        return renderHome();
       case 'payments':
         return renderPayments();
       case 'cart':
@@ -2261,14 +2514,14 @@ function App() {
     return (
       <>
         <Navbar
-          currentView={currentView === 'detail' ? 'home' : currentView}
+          currentView={currentView === 'detail' ? (isAdminUser ? 'home' : 'products') : currentView}
           onNavigate={navigateTo}
           cartCount={totalItems}
           wishlistCount={wishlist.length}
           user={user}
           theme={theme}
           onToggleTheme={toggleTheme}
-          navItems={isAdminUser ? adminNavItems : undefined}
+          navItems={isAdminUser ? adminNavItems : userNavItems}
         />
         {renderAuthenticatedView()}
         <Footer user={user} onNavigate={navigateTo} />

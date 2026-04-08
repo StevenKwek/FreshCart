@@ -590,3 +590,67 @@ export const deleteAdminProduct = async ({ firebaseUser, productId }) => {
 
   return payload.productId;
 };
+
+export const fetchPaymentMethods = async () => {
+  const response = await fetch('/api/payment-methods', {
+    method: 'GET',
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to load payment methods.');
+  }
+
+  return Array.isArray(payload.groups) ? payload.groups : [];
+};
+
+export const createAdminPaymentMethod = async ({
+  firebaseUser,
+  group,
+  label,
+  note,
+}) => {
+  if (!firebaseUser) {
+    throw new Error('Please login first.');
+  }
+
+  const idToken = await firebaseUser.getIdToken();
+  const response = await fetch('/api/payment-methods', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({ group, label, note }),
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to create payment method.');
+  }
+
+  return Array.isArray(payload.groups) ? payload.groups : [];
+};
+
+export const deleteAdminPaymentMethod = async ({ firebaseUser, methodId }) => {
+  if (!firebaseUser) {
+    throw new Error('Please login first.');
+  }
+
+  const idToken = await firebaseUser.getIdToken();
+  const response = await fetch('/api/payment-methods', {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({ methodId }),
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to delete payment method.');
+  }
+
+  return Array.isArray(payload.groups) ? payload.groups : [];
+};

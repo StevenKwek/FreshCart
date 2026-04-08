@@ -1,4 +1,4 @@
-export const paymentMethods = [
+export const defaultPaymentMethods = [
   {
     group: 'E-Wallet',
     options: [
@@ -50,3 +50,53 @@ export const paymentMethods = [
     ],
   },
 ];
+
+const normalizeMethodOption = (option) => {
+  if (!option || typeof option !== 'object') {
+    return null;
+  }
+
+  const id = typeof option.id === 'string' ? option.id.trim() : '';
+  const label = typeof option.label === 'string' ? option.label.trim() : '';
+  const note = typeof option.note === 'string' ? option.note.trim() : '';
+
+  if (!id || !label || !note) {
+    return null;
+  }
+
+  return {
+    id,
+    label,
+    note,
+  };
+};
+
+export const normalizePaymentMethodsData = (value) => {
+  if (!Array.isArray(value)) {
+    return defaultPaymentMethods;
+  }
+
+  const normalized = value
+    .map((group) => {
+      if (!group || typeof group !== 'object') {
+        return null;
+      }
+
+      const groupName = typeof group.group === 'string' ? group.group.trim() : '';
+      const options = Array.isArray(group.options)
+        ? group.options.map(normalizeMethodOption).filter(Boolean)
+        : [];
+
+      if (!groupName || options.length === 0) {
+        return null;
+      }
+
+      return {
+        group: groupName,
+        options,
+      };
+    })
+    .filter(Boolean);
+
+  return normalized.length > 0 ? normalized : defaultPaymentMethods;
+};
