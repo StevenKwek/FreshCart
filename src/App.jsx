@@ -124,11 +124,6 @@ const createEmptyAdminPaymentForm = () => ({
   label: '',
   note: '',
 });
-const statsPeriodOptions = [
-  { id: 'day', label: 'Harian' },
-  { id: 'month', label: 'Bulanan' },
-  { id: 'year', label: 'Tahunan' },
-];
 
 const isSameDay = (left, right) =>
   left.getFullYear() === right.getFullYear() &&
@@ -140,25 +135,6 @@ const isSameMonth = (left, right) =>
 
 const isSameYear = (left, right) => left.getFullYear() === right.getFullYear();
 
-const filterOrdersByPeriod = (orders, period, anchorDate) =>
-  orders.filter((order) => {
-    const orderDate = new Date(order.createdAt);
-
-    if (Number.isNaN(orderDate.getTime())) {
-      return false;
-    }
-
-    if (period === 'day') {
-      return isSameDay(orderDate, anchorDate);
-    }
-
-    if (period === 'month') {
-      return isSameMonth(orderDate, anchorDate);
-    }
-
-    return isSameYear(orderDate, anchorDate);
-  });
-
 const formatDateInputValue = (date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -166,48 +142,89 @@ const formatDateInputValue = (date) => {
   return `${year}-${month}-${day}`;
 };
 
-const buildPivotRows = (orders, period) => {
-  const groups = new Map();
-
-  orders.forEach((order) => {
+const getOrdersForDateMatch = (orders, matcher) =>
+  orders.filter((order) => {
     const orderDate = new Date(order.createdAt);
 
     if (Number.isNaN(orderDate.getTime())) {
-      return;
+      return false;
     }
 
-    let key = '';
-    let label = '';
-
-    if (period === 'day') {
-      key = formatDateInputValue(orderDate);
-      label = shortDateFormatter.format(orderDate);
-    } else if (period === 'month') {
-      key = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}`;
-      label = shortMonthFormatter.format(orderDate);
-    } else {
-      key = String(orderDate.getFullYear());
-      label = yearFormatter.format(orderDate);
-    }
-
-    const current = groups.get(key) || {
-      key,
-      label,
-      total: 0,
-      orders: 0,
-      items: 0,
-    };
-
-    current.total += Number(order.totalPrice || 0);
-    current.orders += 1;
-    current.items += Number(order.totalItems || 0);
-    groups.set(key, current);
+    return matcher(orderDate);
   });
 
-  return [...groups.values()]
-    .sort((left, right) => right.key.localeCompare(left.key))
-    .slice(0, 5);
+const buildDailyChartRows = (orders, anchorDate) => {
+  const year = anchorDate.getFullYear();
+  const month = anchorDate.getMonth();
+  const totalDays = new Date(year, month + 1, 0).getDate();
+
+  return Array.from({ length: totalDays }, (_, index) => {
+    const day = index + 1;
+    const total = orders.reduce((sum, order) => {
+      const orderDate = new Date(order.createdAt);
+
+      if (
+        !Number.isNaN(orderDate.getTime()) &&
+        orderDate.getFullYear() === year &&
+        orderDate.getMonth() === month &&
+        orderDate.getDate() === day
+      ) {
+        return sum + Number(order.totalPrice || 0);
+      }
+
+      return sum;
+    }, 0);
+
+    return {
+      key: `${year}-${month + 1}-${day}`,
+      label: String(day).padStart(2, '0'),
+      total,
+    };
+  });
 };
+
+const buildMonthlyChartRows = (orders, selectedYear) =>
+  Array.from({ length: 12 }, (_, index) => {
+    const total = orders.reduce((sum, order) => {
+      const orderDate = new Date(order.createdAt);
+
+      if (
+        !Number.isNaN(orderDate.getTime()) &&
+        orderDate.getFullYear() === selectedYear &&
+        orderDate.getMonth() === index
+      ) {
+        return sum + Number(order.totalPrice || 0);
+      }
+
+      return sum;
+    }, 0);
+
+    return {
+      key: `${selectedYear}-${index + 1}`,
+      label: shortMonthFormatter.format(new Date(selectedYear, index, 1)).split(' ')[0],
+      total,
+    };
+  });
+
+const buildYearlyChartRows = (orders, selectedYear) =>
+  Array.from({ length: 5 }, (_, index) => {
+    const year = selectedYear - 4 + index;
+    const total = orders.reduce((sum, order) => {
+      const orderDate = new Date(order.createdAt);
+
+      if (!Number.isNaN(orderDate.getTime()) && orderDate.getFullYear() === year) {
+        return sum + Number(order.totalPrice || 0);
+      }
+
+      return sum;
+    }, 0);
+
+    return {
+      key: String(year),
+      label: String(year),
+      total,
+    };
+  });
 
 const getOrderStatusMeta = (status) => {
   switch (status) {
@@ -299,7 +316,6 @@ function App() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(() =>
     getScopedStoredValue(initialPaymentByUserState, initialUserState, ''),
   );
-  const [statsView, setStatsView] = useState('month');
   const [statsAnchorDate, setStatsAnchorDate] = useState(() => new Date());
   const [theme, setTheme] = useState(getInitialTheme);
   const [selectedProductId, setSelectedProductId] = useState(null);
@@ -967,19 +983,18 @@ function App() {
   const activePaymentMethod = paymentMethodGroups
     .flatMap((group) => group.options)
     .find((option) => option.id === selectedPaymentMethod);
-  const todaySpend = purchaseHistory
-    .filter((order) => isSameDay(new Date(order.createdAt), new Date()))
+  const selectedDaySpend = purchaseHistory
+    .filter((order) => isSameDay(new Date(order.createdAt), statsAnchorDate))
     .reduce((sum, order) => sum + Number(order.totalPrice || 0), 0);
-  const monthSpend = purchaseHistory
-    .filter((order) => isSameMonth(new Date(order.createdAt), new Date()))
+  const selectedMonthSpend = purchaseHistory
+    .filter((order) => isSameMonth(new Date(order.createdAt), statsAnchorDate))
     .reduce((sum, order) => sum + Number(order.totalPrice || 0), 0);
-  const yearSpend = purchaseHistory
-    .filter((order) => isSameYear(new Date(order.createdAt), new Date()))
+  const selectedYearSpend = purchaseHistory
+    .filter((order) => isSameYear(new Date(order.createdAt), statsAnchorDate))
     .reduce((sum, order) => sum + Number(order.totalPrice || 0), 0);
-  const filteredStatsOrders = filterOrdersByPeriod(
+  const filteredStatsOrders = getOrdersForDateMatch(
     purchaseHistory,
-    statsView,
-    statsAnchorDate,
+    (orderDate) => isSameMonth(orderDate, statsAnchorDate),
   );
   const statsTotal = filteredStatsOrders.reduce(
     (sum, order) => sum + Number(order.totalPrice || 0),
@@ -996,9 +1011,18 @@ function App() {
     (max, order) => Math.max(max, Number(order.totalPrice || 0)),
     0,
   );
-  const pivotDailyRows = buildPivotRows(purchaseHistory, 'day');
-  const pivotMonthlyRows = buildPivotRows(purchaseHistory, 'month');
-  const pivotYearlyRows = buildPivotRows(purchaseHistory, 'year');
+  const pivotDailyRows = buildDailyChartRows(purchaseHistory, statsAnchorDate);
+  const pivotMonthlyRows = buildMonthlyChartRows(
+    purchaseHistory,
+    statsAnchorDate.getFullYear(),
+  );
+  const pivotYearlyRows = buildYearlyChartRows(
+    purchaseHistory,
+    statsAnchorDate.getFullYear(),
+  );
+  const pivotDailyMax = Math.max(...pivotDailyRows.map((row) => row.total), 0);
+  const pivotMonthlyMax = Math.max(...pivotMonthlyRows.map((row) => row.total), 0);
+  const pivotYearlyMax = Math.max(...pivotYearlyRows.map((row) => row.total), 0);
 
   const loadAdminOrders = async () => {
     if (!isAdminUser || !firebaseAuthUser) {
@@ -1567,22 +1591,22 @@ function App() {
               <span className="card-icon-badge">
                 <AppIcon type="wallet" className="content-icon" />
               </span>
-              <strong>Rp {currencyFormatter.format(todaySpend)}</strong>
-              <span>Pengeluaran hari ini</span>
+              <strong>Rp {currencyFormatter.format(selectedDaySpend)}</strong>
+              <span>Pengeluaran hari terpilih</span>
             </div>
             <div className="stat-card">
               <span className="card-icon-badge">
                 <AppIcon type="wallet" className="content-icon" />
               </span>
-              <strong>Rp {currencyFormatter.format(monthSpend)}</strong>
-              <span>Pengeluaran bulan ini</span>
+              <strong>Rp {currencyFormatter.format(selectedMonthSpend)}</strong>
+              <span>Pengeluaran bulan terpilih</span>
             </div>
             <div className="stat-card">
               <span className="card-icon-badge">
                 <AppIcon type="wallet" className="content-icon" />
               </span>
-              <strong>Rp {currencyFormatter.format(yearSpend)}</strong>
-              <span>Pengeluaran tahun ini</span>
+              <strong>Rp {currencyFormatter.format(selectedYearSpend)}</strong>
+              <span>Pengeluaran tahun terpilih</span>
             </div>
           </div>
         </section>
@@ -1601,18 +1625,6 @@ function App() {
             </div>
 
             <div className="analytics-control-row">
-              <div className="filter-group analytics-filter-group">
-                {statsPeriodOptions.map((option) => (
-                  <button
-                    key={option.id}
-                    className={`filter-button ${statsView === option.id ? 'active' : ''}`}
-                    onClick={() => setStatsView(option.id)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-
               <label className="analytics-calendar-field field-group">
                 <span>Tanggal acuan</span>
                 <input
@@ -1666,69 +1678,97 @@ function App() {
           </div>
 
           <aside className="summary-card analytics-side-panel">
-            <span className="mini-badge">
-              <AppIcon type="products" className="badge-icon" />
-              Pivot Analysis
-            </span>
-            <h2>Analisis pivot belanja</h2>
-            <div className="pivot-section">
+            <div className="pivot-chart-header">
+              <div>
+                <span className="mini-badge">
+                  <AppIcon type="products" className="badge-icon" />
+                  Pivot Analysis
+                </span>
+                <h2>Chart pengeluaran</h2>
+              </div>
+              <div className="pivot-year-switcher">
+                <button
+                  className="secondary-button"
+                  onClick={() =>
+                    setStatsAnchorDate((current) =>
+                      new Date(current.getFullYear() - 1, current.getMonth(), current.getDate()),
+                    )
+                  }
+                >
+                  ←
+                </button>
+                <strong>{statsAnchorDate.getFullYear()}</strong>
+                <button
+                  className="secondary-button"
+                  onClick={() =>
+                    setStatsAnchorDate((current) =>
+                      new Date(current.getFullYear() + 1, current.getMonth(), current.getDate()),
+                    )
+                  }
+                >
+                  →
+                </button>
+              </div>
+            </div>
+
+            <div className="pivot-chart-card">
               <div className="pivot-section-header">
                 <strong>Harian</strong>
-                <span>{pivotDailyRows.length} baris</span>
+                <span>{monthFormatter.format(statsAnchorDate)}</span>
               </div>
-              {pivotDailyRows.length > 0 ? (
-                pivotDailyRows.map((row) => (
-                  <div key={`day-${row.key}`} className="pivot-row">
-                    <div>
-                      <strong>{row.label}</strong>
-                      <span>{row.orders} order • {row.items} item</span>
-                    </div>
-                    <strong>Rp {currencyFormatter.format(row.total)}</strong>
+              <div className="pivot-chart-bars">
+                {pivotDailyRows.map((row) => (
+                  <div key={`day-${row.key}`} className="pivot-chart-bar-item">
+                    <div
+                      className="pivot-chart-bar"
+                      style={{
+                        height: `${pivotDailyMax > 0 ? Math.max((row.total / pivotDailyMax) * 100, row.total > 0 ? 10 : 0) : 0}%`,
+                      }}
+                    />
+                    <span>{row.label}</span>
                   </div>
-                ))
-              ) : (
-                <p className="pivot-empty">Belum ada data harian.</p>
-              )}
+                ))}
+              </div>
             </div>
 
-            <div className="pivot-section">
+            <div className="pivot-chart-card">
               <div className="pivot-section-header">
                 <strong>Bulanan</strong>
-                <span>{pivotMonthlyRows.length} baris</span>
+                <span>{statsAnchorDate.getFullYear()}</span>
               </div>
-              {pivotMonthlyRows.length > 0 ? (
-                pivotMonthlyRows.map((row) => (
-                  <div key={`month-${row.key}`} className="pivot-row">
-                    <div>
-                      <strong>{row.label}</strong>
-                      <span>{row.orders} order • {row.items} item</span>
-                    </div>
-                    <strong>Rp {currencyFormatter.format(row.total)}</strong>
+              <div className="pivot-chart-bars monthly-chart-bars">
+                {pivotMonthlyRows.map((row) => (
+                  <div key={`month-${row.key}`} className="pivot-chart-bar-item">
+                    <div
+                      className="pivot-chart-bar"
+                      style={{
+                        height: `${pivotMonthlyMax > 0 ? Math.max((row.total / pivotMonthlyMax) * 100, row.total > 0 ? 10 : 0) : 0}%`,
+                      }}
+                    />
+                    <span>{row.label}</span>
                   </div>
-                ))
-              ) : (
-                <p className="pivot-empty">Belum ada data bulanan.</p>
-              )}
+                ))}
+              </div>
             </div>
 
-            <div className="pivot-section">
+            <div className="pivot-chart-card">
               <div className="pivot-section-header">
                 <strong>Tahunan</strong>
-                <span>{pivotYearlyRows.length} baris</span>
+                <span>5 tahun terakhir</span>
               </div>
-              {pivotYearlyRows.length > 0 ? (
-                pivotYearlyRows.map((row) => (
-                  <div key={`year-${row.key}`} className="pivot-row">
-                    <div>
-                      <strong>{row.label}</strong>
-                      <span>{row.orders} order • {row.items} item</span>
-                    </div>
-                    <strong>Rp {currencyFormatter.format(row.total)}</strong>
+              <div className="pivot-chart-bars yearly-chart-bars">
+                {pivotYearlyRows.map((row) => (
+                  <div key={`year-${row.key}`} className="pivot-chart-bar-item">
+                    <div
+                      className="pivot-chart-bar"
+                      style={{
+                        height: `${pivotYearlyMax > 0 ? Math.max((row.total / pivotYearlyMax) * 100, row.total > 0 ? 10 : 0) : 0}%`,
+                      }}
+                    />
+                    <span>{row.label}</span>
                   </div>
-                ))
-              ) : (
-                <p className="pivot-empty">Belum ada data tahunan.</p>
-              )}
+                ))}
+              </div>
             </div>
           </aside>
         </section>

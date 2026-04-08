@@ -1449,17 +1449,25 @@ img {
 .analytics-control-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 16px;
   flex-wrap: wrap;
 }
 
-.analytics-filter-group {
-  flex: 1;
-}
-
 .analytics-calendar-field {
   min-width: min(100%, 220px);
+}
+
+.analytics-calendar-field input {
+  background: rgba(245, 249, 245, 0.92);
+  color: #173225;
+  border-color: rgba(132, 160, 139, 0.2);
+  color-scheme: light;
+}
+
+.analytics-calendar-field input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.85;
 }
 
 .analytics-summary-grid {
@@ -1477,14 +1485,30 @@ img {
   gap: 18px;
 }
 
-.pivot-section {
-  display: grid;
-  gap: 10px;
+.pivot-chart-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
-.pivot-section + .pivot-section {
-  padding-top: 12px;
-  border-top: 1px solid rgba(147, 173, 151, 0.16);
+.pivot-chart-header h2 {
+  margin: 12px 0 0;
+  color: #163728;
+}
+
+.pivot-year-switcher {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pivot-year-switcher strong {
+  min-width: 66px;
+  text-align: center;
+  color: #163728;
 }
 
 .pivot-section-header {
@@ -1499,40 +1523,50 @@ img {
   color: #163728;
 }
 
-.pivot-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 14px 0;
-  border-bottom: 1px solid rgba(147, 173, 151, 0.14);
-}
-
-.pivot-row:last-child {
-  border-bottom: 0;
-}
-
-.pivot-row > div {
+.pivot-chart-card {
   display: grid;
-  gap: 4px;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(243, 248, 243, 0.94);
+  border: 1px solid rgba(147, 173, 151, 0.18);
 }
 
-.pivot-row > div strong {
-  color: #163728;
+.pivot-chart-bars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18px, 1fr));
+  align-items: end;
+  gap: 8px;
+  min-height: 170px;
 }
 
-.pivot-row > div span {
+.monthly-chart-bars {
+  grid-template-columns: repeat(12, minmax(18px, 1fr));
+}
+
+.yearly-chart-bars {
+  grid-template-columns: repeat(5, minmax(40px, 1fr));
+}
+
+.pivot-chart-bar-item {
+  display: grid;
+  gap: 10px;
+  align-items: end;
+}
+
+.pivot-chart-bar {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 999px 999px 6px 6px;
+  background: linear-gradient(180deg, #53c47c 0%, #1d7c45 100%);
+  box-shadow: 0 10px 22px rgba(34, 139, 72, 0.16);
+}
+
+.pivot-chart-bar-item span {
   color: #68806e;
-  font-size: 0.9rem;
-}
-
-.pivot-row > strong {
-  color: #1b7d47;
-}
-
-.pivot-empty {
-  margin: 0;
-  color: #68806e;
+  font-size: 0.76rem;
+  text-align: center;
+  word-break: break-word;
 }
 
 .analytics-history-card {
@@ -2259,11 +2293,11 @@ body.theme-dark {
 .app-shell.dark-theme .admin-product-meta,
 .app-shell.dark-theme .admin-payment-group-header span,
 .app-shell.dark-theme .admin-payment-option p,
+.app-shell.dark-theme .pivot-chart-bar-item span,
 .app-shell.dark-theme .analytics-order-copy span,
 .app-shell.dark-theme .analytics-order-meta,
 .app-shell.dark-theme .pivot-section-header,
-.app-shell.dark-theme .pivot-row > div span,
-.app-shell.dark-theme .pivot-empty {
+.app-shell.dark-theme .analytics-calendar-field input {
   color: #9db3a4;
 }
 
@@ -2274,7 +2308,8 @@ body.theme-dark {
 
 .app-shell.dark-theme .admin-payment-group-card,
 .app-shell.dark-theme .admin-payment-option,
-.app-shell.dark-theme .analytics-order-card {
+.app-shell.dark-theme .analytics-order-card,
+.app-shell.dark-theme .pivot-chart-card {
   background: rgba(21, 31, 26, 0.9);
   border-color: rgba(117, 153, 130, 0.16);
   box-shadow: 0 18px 45px rgba(0, 0, 0, 0.22);
@@ -2284,7 +2319,8 @@ body.theme-dark {
 .app-shell.dark-theme .admin-payment-option strong,
 .app-shell.dark-theme .analytics-order-copy strong,
 .app-shell.dark-theme .pivot-section-header strong,
-.app-shell.dark-theme .pivot-row > div strong {
+.app-shell.dark-theme .pivot-chart-header h2,
+.app-shell.dark-theme .pivot-year-switcher strong {
   color: #edf6ef;
 }
 
@@ -2292,13 +2328,15 @@ body.theme-dark {
   background: rgba(117, 153, 130, 0.16);
 }
 
-.app-shell.dark-theme .pivot-section + .pivot-section,
-.app-shell.dark-theme .pivot-row {
-  border-color: rgba(117, 153, 130, 0.16);
+.app-shell.dark-theme .pivot-chart-bar {
+  background: linear-gradient(180deg, #86d1a1 0%, #1d7c45 100%);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22);
 }
 
-.app-shell.dark-theme .pivot-row > strong {
-  color: #86d1a1;
+.app-shell.dark-theme .analytics-calendar-field input {
+  background: rgba(12, 20, 16, 0.94);
+  border-color: rgba(117, 153, 130, 0.16);
+  color-scheme: dark;
 }
 
 .app-shell.dark-theme .order-history-id,
@@ -2853,9 +2891,13 @@ body.theme-dark {
     align-items: flex-start;
   }
 
+  .pivot-chart-header,
+  .analytics-order-card {
+    align-items: flex-start;
+  }
+
   .analytics-order-card {
     grid-template-columns: 1fr;
-    align-items: flex-start;
   }
 
   .analytics-order-meta {
