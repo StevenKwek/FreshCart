@@ -371,6 +371,67 @@ const buildOrderRecord = ({ cartItems, selectedPaymentMethod }) => ({
   })),
 });
 
+const DUPLICATE_WINDOW_MS = 2 * 60 * 1000;
+
+const normalizeOrderItems = (items) =>
+  Array.isArray(items)
+    ? items
+        .map((item) => ({
+          productId: Number(item.productId ?? item.id),
+          quantity: Number(item.quantity),
+        }))
+        .filter(
+          (item) =>
+            Number.isFinite(item.productId) &&
+            item.productId > 0 &&
+            Number.isFinite(item.quantity) &&
+            item.quantity > 0,
+        )
+        .sort((left, right) => left.productId - right.productId)
+    : [];
+
+const hasMatchingItems = (leftItems, rightItems) => {
+  if (leftItems.length !== rightItems.length) {
+    return false;
+  }
+
+  return leftItems.every((leftItem, index) => {
+    const rightItem = rightItems[index];
+    return (
+      leftItem.productId === rightItem.productId &&
+      leftItem.quantity === rightItem.quantity
+    );
+  });
+};
+
+const isDuplicateCheckoutAttempt = ({
+  latestOrder,
+  selectedPaymentMethod,
+  sanitizedCart,
+}) => {
+  if (!latestOrder || latestOrder.status !== 'pending') {
+    return false;
+  }
+
+  const latestCreatedAt = Date.parse(latestOrder.createdAt || '');
+
+  if (Number.isNaN(latestCreatedAt)) {
+    return false;
+  }
+
+  if (Date.now() - latestCreatedAt > DUPLICATE_WINDOW_MS) {
+    return false;
+  }
+
+  const latestItems = normalizeOrderItems(latestOrder.items);
+  const currentItems = normalizeOrderItems(sanitizedCart);
+
+  return (
+    latestOrder.paymentMethod === selectedPaymentMethod &&
+    hasMatchingItems(latestItems, currentItems)
+  );
+};
+
 export const checkoutWithFirebaseTransaction = async ({
   uid,
   cart,
@@ -426,6 +487,18 @@ export const checkoutWithFirebaseTransaction = async ({
     });
 
     const userProfile = normalizeUserProfile(userSnapshot.exists() ? userSnapshot.data() : {});
+    const latestOrder = userProfile.purchaseHistory[0];
+
+    if (
+      isDuplicateCheckoutAttempt({
+        latestOrder,
+        selectedPaymentMethod,
+        sanitizedCart,
+      })
+    ) {
+      return latestOrder;
+    }
+
     const orderRecord = buildOrderRecord({
       cartItems,
       selectedPaymentMethod,

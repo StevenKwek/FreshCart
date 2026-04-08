@@ -274,9 +274,11 @@ function App() {
   const [adminPaymentForm, setAdminPaymentForm] = useState(createEmptyAdminPaymentForm);
   const [isAdminPaymentSaving, setIsAdminPaymentSaving] = useState(false);
   const [deletingPaymentMethodId, setDeletingPaymentMethodId] = useState('');
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const syncErrorShownRef = useRef(false);
   const skipRemoteSyncRef = useRef(false);
   const startupSplashTimerRef = useRef(null);
+  const placeOrderLockRef = useRef(false);
 
   const categories = ['All', ...new Set(inventory.map((product) => product.category))];
   const username = (user?.username || 'guest').split('@')[0];
@@ -1317,6 +1319,10 @@ function App() {
   };
 
   const placeOrder = async () => {
+    if (placeOrderLockRef.current || isPlacingOrder) {
+      return;
+    }
+
     if (cartItems.length === 0) {
       showToast('Your cart is still empty.', 'warning');
       return;
@@ -1332,9 +1338,14 @@ function App() {
       return;
     }
 
+    placeOrderLockRef.current = true;
+    setIsPlacingOrder(true);
+
     if (useFirebase) {
       if (!firebaseAuthUser) {
         showToast('Please login first before placing an order.', 'warning');
+        placeOrderLockRef.current = false;
+        setIsPlacingOrder(false);
         return;
       }
 
@@ -1352,54 +1363,62 @@ function App() {
           error instanceof Error ? error.message : 'Checkout failed. Please try again.',
           'warning',
         );
+      } finally {
+        placeOrderLockRef.current = false;
+        setIsPlacingOrder(false);
       }
 
       return;
     }
 
-    const checkoutTotal = totalPrice;
-    const orderRecord = {
-      id: `order-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      paymentMethod: activePaymentMethod?.label || selectedPaymentMethod,
-      totalItems,
-      totalPrice: checkoutTotal,
-      items: cartItems.map((item) => ({
-        productId: item.id,
-        name: item.name,
-        category: item.category,
-        image: item.image,
-        price: item.price,
-        quantity: item.quantity,
-        unit: item.unit,
-      })),
-    };
+    try {
+      const checkoutTotal = totalPrice;
+      const orderRecord = {
+        id: `order-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        paymentMethod: activePaymentMethod?.label || selectedPaymentMethod,
+        totalItems,
+        totalPrice: checkoutTotal,
+        items: cartItems.map((item) => ({
+          productId: item.id,
+          name: item.name,
+          category: item.category,
+          image: item.image,
+          price: item.price,
+          quantity: item.quantity,
+          unit: item.unit,
+        })),
+      };
 
-    setInventory((current) =>
-      current.map((product) => {
-        const ordered = cart.find((item) => item.productId === product.id);
-        if (!ordered) {
-          return product;
-        }
+      setInventory((current) =>
+        current.map((product) => {
+          const ordered = cart.find((item) => item.productId === product.id);
+          if (!ordered) {
+            return product;
+          }
 
-        return {
-          ...product,
-          stock: Math.max(product.stock - ordered.quantity, 0),
-        };
-      }),
-    );
-    setSpendingByUser((current) => ({
-      ...current,
-      [username]: (current[username] || 0) + checkoutTotal,
-    }));
-    setPurchaseHistoryByUser((current) => ({
-      ...current,
-      [userKey]: [orderRecord, ...(current[userKey] || [])],
-    }));
-    setCart([]);
-    setSelectedPaymentMethod('');
-    navigateTo('home');
-    showToast('Checkout berhasil. Pesanan kamu sedang diproses.');
+          return {
+            ...product,
+            stock: Math.max(product.stock - ordered.quantity, 0),
+          };
+        }),
+      );
+      setSpendingByUser((current) => ({
+        ...current,
+        [username]: (current[username] || 0) + checkoutTotal,
+      }));
+      setPurchaseHistoryByUser((current) => ({
+        ...current,
+        [userKey]: [orderRecord, ...(current[userKey] || [])],
+      }));
+      setCart([]);
+      setSelectedPaymentMethod('');
+      navigateTo('home');
+      showToast('Checkout berhasil. Pesanan kamu sedang diproses.');
+    } finally {
+      placeOrderLockRef.current = false;
+      setIsPlacingOrder(false);
+    }
   };
 
   const openProductDetail = (product) => {
@@ -2221,9 +2240,9 @@ function App() {
           <button
             className="primary-button full-width"
             onClick={placeOrder}
-            disabled={cartItems.length === 0 || !selectedPaymentMethod}
+            disabled={cartItems.length === 0 || !selectedPaymentMethod || isPlacingOrder}
           >
-            Place Order
+            {isPlacingOrder ? 'Please wait...' : 'Place Order'}
           </button>
         </aside>
       </section>
