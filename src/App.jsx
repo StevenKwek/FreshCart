@@ -782,35 +782,6 @@ function App() {
 
   const wishlistProducts = inventory.filter((product) => wishlist.includes(product.id));
   const adminProductList = [...inventory].sort((left, right) => left.id - right.id);
-  const todaySpend = purchaseHistory
-    .filter((order) => isSameDay(new Date(order.createdAt), new Date()))
-    .reduce((sum, order) => sum + Number(order.totalPrice || 0), 0);
-  const monthSpend = purchaseHistory
-    .filter((order) => isSameMonth(new Date(order.createdAt), new Date()))
-    .reduce((sum, order) => sum + Number(order.totalPrice || 0), 0);
-  const yearSpend = purchaseHistory
-    .filter((order) => isSameYear(new Date(order.createdAt), new Date()))
-    .reduce((sum, order) => sum + Number(order.totalPrice || 0), 0);
-  const filteredStatsOrders = filterOrdersByPeriod(
-    purchaseHistory,
-    statsView,
-    statsAnchorDate,
-  );
-  const statsTotal = filteredStatsOrders.reduce(
-    (sum, order) => sum + Number(order.totalPrice || 0),
-    0,
-  );
-  const statsItemsTotal = filteredStatsOrders.reduce(
-    (sum, order) => sum + Number(order.totalItems || 0),
-    0,
-  );
-  const statsAverageSpend = filteredStatsOrders.length
-    ? Math.round(statsTotal / filteredStatsOrders.length)
-    : 0;
-  const maxStatsOrderValue = filteredStatsOrders.reduce(
-    (max, order) => Math.max(max, Number(order.totalPrice || 0)),
-    0,
-  );
 
   const totalPrice = cartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
@@ -967,6 +938,35 @@ function App() {
   const activePaymentMethod = paymentMethodGroups
     .flatMap((group) => group.options)
     .find((option) => option.id === selectedPaymentMethod);
+  const todaySpend = purchaseHistory
+    .filter((order) => isSameDay(new Date(order.createdAt), new Date()))
+    .reduce((sum, order) => sum + Number(order.totalPrice || 0), 0);
+  const monthSpend = purchaseHistory
+    .filter((order) => isSameMonth(new Date(order.createdAt), new Date()))
+    .reduce((sum, order) => sum + Number(order.totalPrice || 0), 0);
+  const yearSpend = purchaseHistory
+    .filter((order) => isSameYear(new Date(order.createdAt), new Date()))
+    .reduce((sum, order) => sum + Number(order.totalPrice || 0), 0);
+  const filteredStatsOrders = filterOrdersByPeriod(
+    purchaseHistory,
+    statsView,
+    statsAnchorDate,
+  );
+  const statsTotal = filteredStatsOrders.reduce(
+    (sum, order) => sum + Number(order.totalPrice || 0),
+    0,
+  );
+  const statsItemsTotal = filteredStatsOrders.reduce(
+    (sum, order) => sum + Number(order.totalItems || 0),
+    0,
+  );
+  const statsAverageSpend = filteredStatsOrders.length
+    ? Math.round(statsTotal / filteredStatsOrders.length)
+    : 0;
+  const maxStatsOrderValue = filteredStatsOrders.reduce(
+    (max, order) => Math.max(max, Number(order.totalPrice || 0)),
+    0,
+  );
 
   const loadAdminOrders = async () => {
     if (!isAdminUser || !firebaseAuthUser) {
