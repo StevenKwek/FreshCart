@@ -253,6 +253,7 @@ function App() {
   );
   const [statsAnchorDate, setStatsAnchorDate] = useState(() => new Date());
   const [chartYear, setChartYear] = useState(() => new Date().getFullYear());
+  const [hoveredChartIndex, setHoveredChartIndex] = useState(null);
   const [theme, setTheme] = useState(getInitialTheme);
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [previousView, setPreviousView] = useState('home');
@@ -923,6 +924,14 @@ function App() {
     purchaseHistory,
     (orderDate) => isSameDay(orderDate, statsAnchorDate),
   );
+  const statsTotal = filteredStatsOrders.reduce(
+    (sum, order) => sum + Number(order.totalPrice || 0),
+    0,
+  );
+  const statsItemsTotal = filteredStatsOrders.reduce(
+    (sum, order) => sum + Number(order.totalItems || 0),
+    0,
+  );
   const maxStatsOrderValue = filteredStatsOrders.reduce(
     (max, order) => Math.max(max, Number(order.totalPrice || 0)),
     0,
@@ -979,17 +988,44 @@ function App() {
   const chartGridValues = Array.from({ length: 5 }, (_, index) =>
     Math.round(((4 - index) / 4) * chartMaxTotal),
   );
-  const chartSelectedPoint = chartPoints.reduce((bestPoint, currentPoint) => {
-    if (!bestPoint || currentPoint.total >= bestPoint.total) {
-      return currentPoint;
+  const hoveredChartPoint =
+    hoveredChartIndex === null ? null : chartPoints[hoveredChartIndex] || null;
+  const chartMonthLabels = chartSeries.map((point) => monthShortFormatter.format(point.date));
+  const chartSelectedPointLabel = hoveredChartPoint
+    ? `${monthShortFormatter.format(hoveredChartPoint.date)} ${chartYear}`
+    : '';
+
+  const handleChartPointerMove = (event) => {
+    if (!chartPoints.length) {
+      return;
     }
 
-    return bestPoint;
-  }, null);
-  const chartMonthLabels = chartSeries.map((point) => monthShortFormatter.format(point.date));
-  const chartSelectedPointLabel = chartSelectedPoint
-    ? `${monthShortFormatter.format(chartSelectedPoint.date)} ${chartYear}`
-    : '';
+    const svgElement = event.currentTarget.ownerSVGElement || event.currentTarget;
+    const bounds = svgElement.getBoundingClientRect();
+
+    if (!bounds.width) {
+      return;
+    }
+
+    const relativeX = ((event.clientX - bounds.left) / bounds.width) * chartWidth;
+    let nearestIndex = 0;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    chartPoints.forEach((point, index) => {
+      const distance = Math.abs(point.x - relativeX);
+
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = index;
+      }
+    });
+
+    setHoveredChartIndex(nearestIndex);
+  };
+
+  const handleChartPointerLeave = () => {
+    setHoveredChartIndex(null);
+  };
 
   const loadAdminOrders = async () => {
     if (!isAdminUser || !firebaseAuthUser) {
@@ -1545,7 +1581,7 @@ function App() {
     return (
       <main className="page-shell">
         <section className="home-banner analytics-home-banner">
-          <div>
+          <div className="analytics-hero-copy">
             <span className="mini-badge">Spending dashboard</span>
             <h1>Pantau pengeluaran kamu dari satu dashboard yang lebih fokus.</h1>
             <p>
@@ -1580,7 +1616,7 @@ function App() {
                   Analytics Controls
                 </span>
                 <h1>Atur periode statistik</h1>
-                <p>Pilih tanggal acuan untuk melihat total pengeluaran dan jumlah item di hari itu.</p>
+                <p>Pilih tanggal untuk melihat total pengeluaran dan jumlah barang yang dibeli pada hari itu.</p>
               </div>
             </div>
 
@@ -1610,15 +1646,15 @@ function App() {
                 <span className="card-icon-badge">
                   <AppIcon type="wallet" className="content-icon" />
                 </span>
-                <strong>Rp {currencyFormatter.format(activeSpending)}</strong>
-                <span>Total pengeluaran</span>
+                <strong>Rp {currencyFormatter.format(statsTotal)}</strong>
+                <span>Total pengeluaran tanggal terpilih</span>
               </div>
               <div className="detail-meta-card analytics-summary-card">
                 <span className="card-icon-badge">
                   <AppIcon type="cart" className="content-icon" />
                 </span>
-                <strong>{overallItemsPurchased}</strong>
-                <span>Total barang dibeli</span>
+                <strong>{statsItemsTotal}</strong>
+                <span>Total barang tanggal terpilih</span>
               </div>
             </div>
           </div>
@@ -1656,16 +1692,16 @@ function App() {
                 <span>Berdasarkan tahun yang dipilih</span>
               </div>
               <div className="pivot-line-chart-shell">
-                {chartSelectedPoint ? (
+                {hoveredChartPoint ? (
                   <div
                     className="pivot-chart-tooltip"
                     style={{
-                      left: `${(chartSelectedPoint.x / chartWidth) * 100}%`,
-                      top: `${(chartSelectedPoint.y / chartHeight) * 100}%`,
+                      left: `${(hoveredChartPoint.x / chartWidth) * 100}%`,
+                      top: `${(hoveredChartPoint.y / chartHeight) * 100}%`,
                     }}
                   >
                     <span>{chartSelectedPointLabel}</span>
-                    <strong>Rp {currencyFormatter.format(chartSelectedPoint.total)}</strong>
+                    <strong>Rp {currencyFormatter.format(hoveredChartPoint.total)}</strong>
                   </div>
                 ) : null}
                 <svg
@@ -1676,8 +1712,8 @@ function App() {
                 >
                   <defs>
                     <linearGradient id="pivot-chart-fill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#5d51ff" stopOpacity="0.22" />
-                      <stop offset="100%" stopColor="#5d51ff" stopOpacity="0.02" />
+                      <stop offset="0%" stopColor="#1f8b57" stopOpacity="0.26" />
+                      <stop offset="100%" stopColor="#1f8b57" stopOpacity="0.03" />
                     </linearGradient>
                   </defs>
                   {chartGridValues.map((value, index) => {
@@ -1705,24 +1741,43 @@ function App() {
 
                   {chartAreaPath ? <path d={chartAreaPath} className="pivot-line-area" /> : null}
                   {chartLinePath ? <path d={chartLinePath} className="pivot-line-stroke" /> : null}
+                  {chartLinePath ? (
+                    <path
+                      d={chartLinePath}
+                      className="pivot-line-hitline"
+                      onPointerMove={handleChartPointerMove}
+                      onPointerEnter={handleChartPointerMove}
+                      onPointerLeave={handleChartPointerLeave}
+                    />
+                  ) : null}
 
-                  {chartSelectedPoint ? (
+                  {hoveredChartPoint ? (
                     <g>
                       <line
-                        x1={chartSelectedPoint.x}
+                        x1={hoveredChartPoint.x}
                         y1={chartPadding.top}
-                        x2={chartSelectedPoint.x}
+                        x2={hoveredChartPoint.x}
                         y2={chartHeight - chartPadding.bottom}
                         className="pivot-line-marker"
                       />
                       <circle
-                        cx={chartSelectedPoint.x}
-                        cy={chartSelectedPoint.y}
+                        cx={hoveredChartPoint.x}
+                        cy={hoveredChartPoint.y}
                         r="6"
                         className="pivot-line-point"
                       />
                     </g>
                   ) : null}
+                  {chartPoints.map((point) => (
+                    <circle
+                      key={point.monthIndex}
+                      cx={point.x}
+                      cy={point.y}
+                      r="16"
+                      className="pivot-line-hitbox"
+                      onPointerEnter={() => setHoveredChartIndex(point.monthIndex)}
+                    />
+                  ))}
                 </svg>
 
                 <div className="pivot-chart-xlabels">
