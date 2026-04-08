@@ -64,6 +64,14 @@ const monthFormatter = new Intl.DateTimeFormat('id-ID', {
   month: 'long',
   year: 'numeric',
 });
+const shortDateFormatter = new Intl.DateTimeFormat('id-ID', {
+  day: '2-digit',
+  month: 'short',
+});
+const shortMonthFormatter = new Intl.DateTimeFormat('id-ID', {
+  month: 'short',
+  year: 'numeric',
+});
 const yearFormatter = new Intl.DateTimeFormat('id-ID', {
   year: 'numeric',
 });
@@ -151,33 +159,54 @@ const filterOrdersByPeriod = (orders, period, anchorDate) =>
     return isSameYear(orderDate, anchorDate);
   });
 
-const shiftAnchorDate = (date, period, delta) => {
-  const nextDate = new Date(date);
-
-  if (period === 'day') {
-    nextDate.setDate(nextDate.getDate() + delta);
-    return nextDate;
-  }
-
-  if (period === 'month') {
-    nextDate.setMonth(nextDate.getMonth() + delta);
-    return nextDate;
-  }
-
-  nextDate.setFullYear(nextDate.getFullYear() + delta);
-  return nextDate;
+const formatDateInputValue = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
-const formatStatsPeriodLabel = (period, anchorDate) => {
-  if (period === 'day') {
-    return dateTimeFormatter.format(anchorDate).split(',')[0];
-  }
+const buildPivotRows = (orders, period) => {
+  const groups = new Map();
 
-  if (period === 'month') {
-    return monthFormatter.format(anchorDate);
-  }
+  orders.forEach((order) => {
+    const orderDate = new Date(order.createdAt);
 
-  return yearFormatter.format(anchorDate);
+    if (Number.isNaN(orderDate.getTime())) {
+      return;
+    }
+
+    let key = '';
+    let label = '';
+
+    if (period === 'day') {
+      key = formatDateInputValue(orderDate);
+      label = shortDateFormatter.format(orderDate);
+    } else if (period === 'month') {
+      key = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}`;
+      label = shortMonthFormatter.format(orderDate);
+    } else {
+      key = String(orderDate.getFullYear());
+      label = yearFormatter.format(orderDate);
+    }
+
+    const current = groups.get(key) || {
+      key,
+      label,
+      total: 0,
+      orders: 0,
+      items: 0,
+    };
+
+    current.total += Number(order.totalPrice || 0);
+    current.orders += 1;
+    current.items += Number(order.totalItems || 0);
+    groups.set(key, current);
+  });
+
+  return [...groups.values()]
+    .sort((left, right) => right.key.localeCompare(left.key))
+    .slice(0, 5);
 };
 
 const getOrderStatusMeta = (status) => {
@@ -967,6 +996,9 @@ function App() {
     (max, order) => Math.max(max, Number(order.totalPrice || 0)),
     0,
   );
+  const pivotDailyRows = buildPivotRows(purchaseHistory, 'day');
+  const pivotMonthlyRows = buildPivotRows(purchaseHistory, 'month');
+  const pivotYearlyRows = buildPivotRows(purchaseHistory, 'year');
 
   const loadAdminOrders = async () => {
     if (!isAdminUser || !firebaseAuthUser) {
@@ -1581,31 +1613,24 @@ function App() {
                 ))}
               </div>
 
-              <div className="analytics-range-nav">
-                <button
-                  className="secondary-button"
-                  onClick={() =>
-                    setStatsAnchorDate((current) =>
-                      shiftAnchorDate(current, statsView, -1),
-                    )
-                  }
-                >
-                  Sebelumnya
-                </button>
-                <span className="analytics-range-label">
-                  {formatStatsPeriodLabel(statsView, statsAnchorDate)}
-                </span>
-                <button
-                  className="secondary-button"
-                  onClick={() =>
-                    setStatsAnchorDate((current) =>
-                      shiftAnchorDate(current, statsView, 1),
-                    )
-                  }
-                >
-                  Berikutnya
-                </button>
-              </div>
+              <label className="analytics-calendar-field field-group">
+                <span>Tanggal acuan</span>
+                <input
+                  type="date"
+                  value={formatDateInputValue(statsAnchorDate)}
+                  onChange={(event) => {
+                    if (!event.target.value) {
+                      return;
+                    }
+
+                    const nextDate = new Date(`${event.target.value}T00:00:00`);
+
+                    if (!Number.isNaN(nextDate.getTime())) {
+                      setStatsAnchorDate(nextDate);
+                    }
+                  }}
+                />
+              </label>
             </div>
 
             <div className="analytics-summary-grid">
@@ -1643,33 +1668,68 @@ function App() {
           <aside className="summary-card analytics-side-panel">
             <span className="mini-badge">
               <AppIcon type="products" className="badge-icon" />
-              Quick Snapshot
+              Pivot Analysis
             </span>
-            <h2>Ringkasan akun</h2>
-            <div className="summary-row">
-              <span className="icon-text">
-                <AppIcon type="wallet" className="summary-icon" />
-                Total spending
-              </span>
-              <strong>Rp {currencyFormatter.format(activeSpending)}</strong>
+            <h2>Analisis pivot belanja</h2>
+            <div className="pivot-section">
+              <div className="pivot-section-header">
+                <strong>Harian</strong>
+                <span>{pivotDailyRows.length} baris</span>
+              </div>
+              {pivotDailyRows.length > 0 ? (
+                pivotDailyRows.map((row) => (
+                  <div key={`day-${row.key}`} className="pivot-row">
+                    <div>
+                      <strong>{row.label}</strong>
+                      <span>{row.orders} order • {row.items} item</span>
+                    </div>
+                    <strong>Rp {currencyFormatter.format(row.total)}</strong>
+                  </div>
+                ))
+              ) : (
+                <p className="pivot-empty">Belum ada data harian.</p>
+              )}
             </div>
-            <div className="summary-row">
-              <span className="icon-text">
-                <AppIcon type="heart" className="summary-icon" />
-                Wishlist
-              </span>
-              <strong>{wishlist.length} item</strong>
+
+            <div className="pivot-section">
+              <div className="pivot-section-header">
+                <strong>Bulanan</strong>
+                <span>{pivotMonthlyRows.length} baris</span>
+              </div>
+              {pivotMonthlyRows.length > 0 ? (
+                pivotMonthlyRows.map((row) => (
+                  <div key={`month-${row.key}`} className="pivot-row">
+                    <div>
+                      <strong>{row.label}</strong>
+                      <span>{row.orders} order • {row.items} item</span>
+                    </div>
+                    <strong>Rp {currencyFormatter.format(row.total)}</strong>
+                  </div>
+                ))
+              ) : (
+                <p className="pivot-empty">Belum ada data bulanan.</p>
+              )}
             </div>
-            <div className="summary-row">
-              <span className="icon-text">
-                <AppIcon type="cart" className="summary-icon" />
-                Keranjang
-              </span>
-              <strong>{totalItems} item</strong>
+
+            <div className="pivot-section">
+              <div className="pivot-section-header">
+                <strong>Tahunan</strong>
+                <span>{pivotYearlyRows.length} baris</span>
+              </div>
+              {pivotYearlyRows.length > 0 ? (
+                pivotYearlyRows.map((row) => (
+                  <div key={`year-${row.key}`} className="pivot-row">
+                    <div>
+                      <strong>{row.label}</strong>
+                      <span>{row.orders} order • {row.items} item</span>
+                    </div>
+                    <strong>Rp {currencyFormatter.format(row.total)}</strong>
+                  </div>
+                ))
+              ) : (
+                <p className="pivot-empty">Belum ada data tahunan.</p>
+              )}
             </div>
-            <button className="primary-button full-width" onClick={() => navigateTo('products')}>
-              Lihat Produk
-            </button>
           </aside>
         </section>
 
@@ -1979,7 +2039,11 @@ function App() {
             </span>
             <strong>Rp {currencyFormatter.format(totalPrice)}</strong>
           </div>
-          <button className="primary-button full-width" onClick={() => navigateTo('checkout')}>
+          <button
+            className="primary-button full-width"
+            onClick={() => navigateTo('checkout')}
+            disabled={cartItems.length === 0}
+          >
             Go to Checkout
           </button>
         </aside>
@@ -2092,7 +2156,11 @@ function App() {
               <strong>Rp {currencyFormatter.format(totalPrice)}</strong>
             </div>
           </div>
-          <button className="primary-button full-width" onClick={placeOrder}>
+          <button
+            className="primary-button full-width"
+            onClick={placeOrder}
+            disabled={cartItems.length === 0 || !selectedPaymentMethod}
+          >
             Place Order
           </button>
         </aside>

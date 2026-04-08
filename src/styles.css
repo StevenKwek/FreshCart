@@ -1458,18 +1458,8 @@ img {
   flex: 1;
 }
 
-.analytics-range-nav {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.analytics-range-label {
-  min-width: 132px;
-  text-align: center;
-  font-weight: 700;
-  color: #163728;
+.analytics-calendar-field {
+  min-width: min(100%, 220px);
 }
 
 .analytics-summary-grid {
@@ -1484,7 +1474,65 @@ img {
 
 .analytics-side-panel {
   display: grid;
-  gap: 6px;
+  gap: 18px;
+}
+
+.pivot-section {
+  display: grid;
+  gap: 10px;
+}
+
+.pivot-section + .pivot-section {
+  padding-top: 12px;
+  border-top: 1px solid rgba(147, 173, 151, 0.16);
+}
+
+.pivot-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #68806e;
+}
+
+.pivot-section-header strong {
+  color: #163728;
+}
+
+.pivot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(147, 173, 151, 0.14);
+}
+
+.pivot-row:last-child {
+  border-bottom: 0;
+}
+
+.pivot-row > div {
+  display: grid;
+  gap: 4px;
+}
+
+.pivot-row > div strong {
+  color: #163728;
+}
+
+.pivot-row > div span {
+  color: #68806e;
+  font-size: 0.9rem;
+}
+
+.pivot-row > strong {
+  color: #1b7d47;
+}
+
+.pivot-empty {
+  margin: 0;
+  color: #68806e;
 }
 
 .analytics-history-card {
@@ -2213,7 +2261,9 @@ body.theme-dark {
 .app-shell.dark-theme .admin-payment-option p,
 .app-shell.dark-theme .analytics-order-copy span,
 .app-shell.dark-theme .analytics-order-meta,
-.app-shell.dark-theme .analytics-range-label {
+.app-shell.dark-theme .pivot-section-header,
+.app-shell.dark-theme .pivot-row > div span,
+.app-shell.dark-theme .pivot-empty {
   color: #9db3a4;
 }
 
@@ -2232,12 +2282,23 @@ body.theme-dark {
 
 .app-shell.dark-theme .admin-payment-group-header strong,
 .app-shell.dark-theme .admin-payment-option strong,
-.app-shell.dark-theme .analytics-order-copy strong {
+.app-shell.dark-theme .analytics-order-copy strong,
+.app-shell.dark-theme .pivot-section-header strong,
+.app-shell.dark-theme .pivot-row > div strong {
   color: #edf6ef;
 }
 
 .app-shell.dark-theme .analytics-order-bar-shell {
   background: rgba(117, 153, 130, 0.16);
+}
+
+.app-shell.dark-theme .pivot-section + .pivot-section,
+.app-shell.dark-theme .pivot-row {
+  border-color: rgba(117, 153, 130, 0.16);
+}
+
+.app-shell.dark-theme .pivot-row > strong {
+  color: #86d1a1;
 }
 
 .app-shell.dark-theme .order-history-id,
@@ -2960,8 +3021,7 @@ body.theme-dark {
     padding: 18px;
   }
 
-  .analytics-control-row,
-  .analytics-range-nav {
+  .analytics-control-row {
     align-items: flex-start;
   }
 
