@@ -2175,9 +2175,14 @@ img {
 }
 
 .wishlist-empty-state {
-  max-width: 420px;
+  max-width: 760px;
+  width: 100%;
   justify-self: flex-start;
-  padding: 28px;
+  padding: 30px 34px;
+}
+
+.wishlist-empty-shell {
+  margin-top: 24px;
 }
 
 .empty-state h3 {

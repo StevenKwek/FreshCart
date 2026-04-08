@@ -2114,9 +2114,9 @@ function App() {
         </div>
       </section>
 
-      <section className="products-grid wishlist-grid">
-        {wishlistProducts.length > 0 ? (
-          wishlistProducts.map((product) => (
+      {wishlistProducts.length > 0 ? (
+        <section className="products-grid wishlist-grid">
+          {wishlistProducts.map((product) => (
             <ProductCard
               key={product.id}
               product={product}
@@ -2126,14 +2126,16 @@ function App() {
               onViewDetail={openProductDetail}
               onAddToCart={addToCart}
             />
-          ))
-        ) : (
+          ))}
+        </section>
+      ) : (
+        <section className="wishlist-empty-shell">
           <div className="empty-state compact-empty-state wishlist-empty-state">
             <h3>Your wishlist is empty</h3>
             <p>Tap the heart icon on a product card to save favorites.</p>
           </div>
-        )}
-      </section>
+        </section>
+      )}
     </main>
   );
 
