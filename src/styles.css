@@ -2207,7 +2207,7 @@ img {
 .toast {
   position: fixed;
   right: 24px;
-  bottom: 24px;
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
   z-index: 20;
   display: flex;
   align-items: center;
@@ -3153,7 +3153,7 @@ body.theme-dark {
 
   .toast {
     right: 12px;
-    bottom: 12px;
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
     width: fit-content;
     max-width: calc(100% - 24px);
   }
@@ -3344,7 +3344,7 @@ body.theme-dark {
   .toast {
     left: 8px;
     right: 8px;
-    bottom: 8px;
+    top: calc(env(safe-area-inset-top, 0px) + 8px);
     max-width: calc(100% - 16px);
   }
 }

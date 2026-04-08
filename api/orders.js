@@ -245,12 +245,12 @@ export default async function handler(request, response) {
     const shouldRestock = currentStatus !== 'cancelled' && status === 'cancelled';
 
     await adminDb.runTransaction(async (transaction) => {
-      transaction.set(orderRef, nextOrder, { merge: true });
+      const restockPlan = [];
 
       if (shouldRestock) {
         const items = Array.isArray(nextOrder.items) ? nextOrder.items : [];
 
-        for (const item of items) {
+        items.forEach((item) => {
           const productId = Number(item.productId);
           const quantity = Number(item.quantity);
 
@@ -260,23 +260,35 @@ export default async function handler(request, response) {
             !Number.isFinite(quantity) ||
             quantity <= 0
           ) {
-            continue;
+            return;
           }
 
-          const productRef = adminDb.collection('products').doc(String(productId));
-          const productSnapshot = await transaction.get(productRef);
-
-          if (!productSnapshot.exists) {
-            continue;
-          }
-
-          const currentStock = Number(productSnapshot.data()?.stock || 0);
-
-          transaction.update(productRef, {
-            stock: currentStock + quantity,
+          restockPlan.push({
+            productRef: adminDb.collection('products').doc(String(productId)),
+            quantity,
           });
-        }
+        });
       }
+
+      // Firestore transactions require all reads to happen before any write.
+      const productSnapshots = await Promise.all(
+        restockPlan.map((entry) => transaction.get(entry.productRef)),
+      );
+
+      transaction.set(orderRef, nextOrder, { merge: true });
+
+      productSnapshots.forEach((productSnapshot, index) => {
+        if (!productSnapshot.exists) {
+          return;
+        }
+
+        const { productRef, quantity } = restockPlan[index];
+        const currentStock = Number(productSnapshot.data()?.stock || 0);
+
+        transaction.update(productRef, {
+          stock: currentStock + quantity,
+        });
+      });
 
       transaction.set(
         userRef,
