@@ -60,6 +60,13 @@ const dateTimeFormatter = new Intl.DateTimeFormat('id-ID', {
   hour: '2-digit',
   minute: '2-digit',
 });
+const monthFormatter = new Intl.DateTimeFormat('id-ID', {
+  month: 'long',
+  year: 'numeric',
+});
+const yearFormatter = new Intl.DateTimeFormat('id-ID', {
+  year: 'numeric',
+});
 const inventorySeedVersion = createInventorySeedVersion(initialProducts);
 const landingFeatureHighlights = [
   {
@@ -109,6 +116,69 @@ const createEmptyAdminPaymentForm = () => ({
   label: '',
   note: '',
 });
+const statsPeriodOptions = [
+  { id: 'day', label: 'Harian' },
+  { id: 'month', label: 'Bulanan' },
+  { id: 'year', label: 'Tahunan' },
+];
+
+const isSameDay = (left, right) =>
+  left.getFullYear() === right.getFullYear() &&
+  left.getMonth() === right.getMonth() &&
+  left.getDate() === right.getDate();
+
+const isSameMonth = (left, right) =>
+  left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth();
+
+const isSameYear = (left, right) => left.getFullYear() === right.getFullYear();
+
+const filterOrdersByPeriod = (orders, period, anchorDate) =>
+  orders.filter((order) => {
+    const orderDate = new Date(order.createdAt);
+
+    if (Number.isNaN(orderDate.getTime())) {
+      return false;
+    }
+
+    if (period === 'day') {
+      return isSameDay(orderDate, anchorDate);
+    }
+
+    if (period === 'month') {
+      return isSameMonth(orderDate, anchorDate);
+    }
+
+    return isSameYear(orderDate, anchorDate);
+  });
+
+const shiftAnchorDate = (date, period, delta) => {
+  const nextDate = new Date(date);
+
+  if (period === 'day') {
+    nextDate.setDate(nextDate.getDate() + delta);
+    return nextDate;
+  }
+
+  if (period === 'month') {
+    nextDate.setMonth(nextDate.getMonth() + delta);
+    return nextDate;
+  }
+
+  nextDate.setFullYear(nextDate.getFullYear() + delta);
+  return nextDate;
+};
+
+const formatStatsPeriodLabel = (period, anchorDate) => {
+  if (period === 'day') {
+    return dateTimeFormatter.format(anchorDate).split(',')[0];
+  }
+
+  if (period === 'month') {
+    return monthFormatter.format(anchorDate);
+  }
+
+  return yearFormatter.format(anchorDate);
+};
 
 const getOrderStatusMeta = (status) => {
   switch (status) {
@@ -200,6 +270,8 @@ function App() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(() =>
     getScopedStoredValue(initialPaymentByUserState, initialUserState, ''),
   );
+  const [statsView, setStatsView] = useState('month');
+  const [statsAnchorDate, setStatsAnchorDate] = useState(() => new Date());
   const [theme, setTheme] = useState(getInitialTheme);
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [previousView, setPreviousView] = useState('home');
@@ -710,6 +782,35 @@ function App() {
 
   const wishlistProducts = inventory.filter((product) => wishlist.includes(product.id));
   const adminProductList = [...inventory].sort((left, right) => left.id - right.id);
+  const todaySpend = purchaseHistory
+    .filter((order) => isSameDay(new Date(order.createdAt), new Date()))
+    .reduce((sum, order) => sum + Number(order.totalPrice || 0), 0);
+  const monthSpend = purchaseHistory
+    .filter((order) => isSameMonth(new Date(order.createdAt), new Date()))
+    .reduce((sum, order) => sum + Number(order.totalPrice || 0), 0);
+  const yearSpend = purchaseHistory
+    .filter((order) => isSameYear(new Date(order.createdAt), new Date()))
+    .reduce((sum, order) => sum + Number(order.totalPrice || 0), 0);
+  const filteredStatsOrders = filterOrdersByPeriod(
+    purchaseHistory,
+    statsView,
+    statsAnchorDate,
+  );
+  const statsTotal = filteredStatsOrders.reduce(
+    (sum, order) => sum + Number(order.totalPrice || 0),
+    0,
+  );
+  const statsItemsTotal = filteredStatsOrders.reduce(
+    (sum, order) => sum + Number(order.totalItems || 0),
+    0,
+  );
+  const statsAverageSpend = filteredStatsOrders.length
+    ? Math.round(statsTotal / filteredStatsOrders.length)
+    : 0;
+  const maxStatsOrderValue = filteredStatsOrders.reduce(
+    (max, order) => Math.max(max, Number(order.totalPrice || 0)),
+    0,
+  );
 
   const totalPrice = cartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
@@ -1420,89 +1521,199 @@ function App() {
 
     return (
       <main className="page-shell">
-        <section className="home-banner">
+        <section className="home-banner analytics-home-banner">
           <div>
-            <span className="mini-badge">Daily essentials</span>
-            <h1>Shop smarter for your weekly grocery run.</h1>
+            <span className="mini-badge">Spending dashboard</span>
+            <h1>Pantau pengeluaran kamu per hari, bulan, dan tahun dengan lebih rapi.</h1>
             <p>
-              Jelajahi produk segar, simpan favorit, dan masukkan ke cart hanya
-              dalam beberapa klik.
+              Home sekarang fokus ke statistik belanja, jadi kamu bisa lihat pola
+              pengeluaran dan utak-atik periodenya langsung dari dashboard.
             </p>
           </div>
-          <div className="stat-grid">
+          <div className="stat-grid analytics-stat-grid">
             <div className="stat-card">
               <span className="card-icon-badge">
-                <AppIcon type="products" className="content-icon" />
+                <AppIcon type="wallet" className="content-icon" />
               </span>
-              <strong>{inventory.length}</strong>
-              <span>Produk tersedia</span>
+              <strong>Rp {currencyFormatter.format(todaySpend)}</strong>
+              <span>Pengeluaran hari ini</span>
             </div>
             <div className="stat-card">
               <span className="card-icon-badge">
-                <AppIcon type="heart" className="content-icon" />
+                <AppIcon type="wallet" className="content-icon" />
               </span>
-              <strong>{wishlist.length}</strong>
-              <span>Wishlist item</span>
+              <strong>Rp {currencyFormatter.format(monthSpend)}</strong>
+              <span>Pengeluaran bulan ini</span>
             </div>
             <div className="stat-card">
               <span className="card-icon-badge">
-                <AppIcon type="cart" className="content-icon" />
+                <AppIcon type="wallet" className="content-icon" />
               </span>
-              <strong>{totalItems}</strong>
-              <span>Cart item</span>
+              <strong>Rp {currencyFormatter.format(yearSpend)}</strong>
+              <span>Pengeluaran tahun ini</span>
             </div>
           </div>
         </section>
 
-        <section className="toolbar">
-          <label className="search-box">
-            <span className="icon-text">
-              <AppIcon type="search" className="content-icon soft" />
-              Search Product
-            </span>
-            <input
-              type="text"
-              placeholder="Search by product name..."
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-            />
-          </label>
+        <section className="checkout-layout analytics-layout">
+          <div className="order-card analytics-panel">
+            <div className="section-header compact">
+              <div>
+                <span className="mini-badge">
+                  <AppIcon type="spark" className="badge-icon" />
+                  Analytics Controls
+                </span>
+                <h1>Atur periode statistik</h1>
+                <p>Pilih fokus harian, bulanan, atau tahunan lalu geser periodenya.</p>
+              </div>
+            </div>
 
-          <div className="filter-section">
-            <span className="filter-label icon-text">
-              <AppIcon type="grid" className="content-icon soft" />
-              Filter Category
-            </span>
-            <div className="filter-group">
-              {categories.map((category) => (
+            <div className="analytics-control-row">
+              <div className="filter-group analytics-filter-group">
+                {statsPeriodOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    className={`filter-button ${statsView === option.id ? 'active' : ''}`}
+                    onClick={() => setStatsView(option.id)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="analytics-range-nav">
                 <button
-                  key={category}
-                  className={`filter-button ${activeCategory === category ? 'active' : ''}`}
-                  onClick={() => setActiveCategory(category)}
+                  className="secondary-button"
+                  onClick={() =>
+                    setStatsAnchorDate((current) =>
+                      shiftAnchorDate(current, statsView, -1),
+                    )
+                  }
                 >
-                  {category}
+                  Sebelumnya
                 </button>
-              ))}
+                <span className="analytics-range-label">
+                  {formatStatsPeriodLabel(statsView, statsAnchorDate)}
+                </span>
+                <button
+                  className="secondary-button"
+                  onClick={() =>
+                    setStatsAnchorDate((current) =>
+                      shiftAnchorDate(current, statsView, 1),
+                    )
+                  }
+                >
+                  Berikutnya
+                </button>
+              </div>
+            </div>
+
+            <div className="analytics-summary-grid">
+              <div className="detail-meta-card analytics-summary-card">
+                <span className="card-icon-badge">
+                  <AppIcon type="wallet" className="content-icon" />
+                </span>
+                <strong>Rp {currencyFormatter.format(statsTotal)}</strong>
+                <span>Total periode aktif</span>
+              </div>
+              <div className="detail-meta-card analytics-summary-card">
+                <span className="card-icon-badge">
+                  <AppIcon type="products" className="content-icon" />
+                </span>
+                <strong>{filteredStatsOrders.length}</strong>
+                <span>Jumlah order</span>
+              </div>
+              <div className="detail-meta-card analytics-summary-card">
+                <span className="card-icon-badge">
+                  <AppIcon type="cart" className="content-icon" />
+                </span>
+                <strong>{statsItemsTotal}</strong>
+                <span>Total item</span>
+              </div>
+              <div className="detail-meta-card analytics-summary-card">
+                <span className="card-icon-badge">
+                  <AppIcon type="spark" className="content-icon" />
+                </span>
+                <strong>Rp {currencyFormatter.format(statsAverageSpend)}</strong>
+                <span>Rata-rata per order</span>
+              </div>
             </div>
           </div>
+
+          <aside className="summary-card analytics-side-panel">
+            <span className="mini-badge">
+              <AppIcon type="products" className="badge-icon" />
+              Quick Snapshot
+            </span>
+            <h2>Ringkasan akun</h2>
+            <div className="summary-row">
+              <span className="icon-text">
+                <AppIcon type="wallet" className="summary-icon" />
+                Total spending
+              </span>
+              <strong>Rp {currencyFormatter.format(activeSpending)}</strong>
+            </div>
+            <div className="summary-row">
+              <span className="icon-text">
+                <AppIcon type="heart" className="summary-icon" />
+                Wishlist
+              </span>
+              <strong>{wishlist.length} item</strong>
+            </div>
+            <div className="summary-row">
+              <span className="icon-text">
+                <AppIcon type="cart" className="summary-icon" />
+                Keranjang
+              </span>
+              <strong>{totalItems} item</strong>
+            </div>
+            <button className="primary-button full-width" onClick={() => navigateTo('products')}>
+              Lihat Produk
+            </button>
+          </aside>
         </section>
 
-        <section className="products-grid">
-          {filteredProducts.length > 0 ? (
-            filteredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                isWishlisted={wishlist.includes(product.id)}
-                onToggleWishlist={toggleWishlist}
-                onViewDetail={openProductDetail}
-                onAddToCart={addToCart}
-              />
-            ))
+        <section className="profile-card profile-section-card analytics-history-card">
+          <div className="section-header compact">
+            <div>
+              <span className="mini-badge">
+                <AppIcon type="delivery" className="badge-icon" />
+                Spending Timeline
+              </span>
+              <h2>Riwayat periode aktif</h2>
+            </div>
+          </div>
+
+          {filteredStatsOrders.length > 0 ? (
+            <div className="analytics-order-list">
+              {filteredStatsOrders.map((order) => {
+                const amount = Number(order.totalPrice || 0);
+                const width = maxStatsOrderValue > 0 ? (amount / maxStatsOrderValue) * 100 : 0;
+
+                return (
+                  <article key={order.id} className="analytics-order-card">
+                    <div className="analytics-order-copy">
+                      <strong>{order.id}</strong>
+                      <span>{dateTimeFormatter.format(new Date(order.createdAt))}</span>
+                    </div>
+                    <div className="analytics-order-bar-shell">
+                      <div
+                        className="analytics-order-bar"
+                        style={{ width: `${Math.max(width, 12)}%` }}
+                      />
+                    </div>
+                    <div className="analytics-order-meta">
+                      <span>{order.totalItems} item</span>
+                      <strong>Rp {currencyFormatter.format(amount)}</strong>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
           ) : (
-            <div className="empty-state">
-              <h3>No products found</h3>
-              <p>Try changing your search or category filter.</p>
+            <div className="empty-state left compact-empty-state">
+              <h3>Belum ada data di periode ini</h3>
+              <p>Coba ganti periodenya ke hari, bulan, atau tahun lain untuk melihat statistik.</p>
             </div>
           )}
         </section>
@@ -1510,9 +1721,100 @@ function App() {
     );
   };
 
+  const renderProducts = () => (
+    <main className="page-shell">
+      <section className="home-banner">
+        <div>
+          <span className="mini-badge">Daily essentials</span>
+          <h1>Shop smarter for your weekly grocery run.</h1>
+          <p>
+            Jelajahi produk segar, simpan favorit, dan masukkan ke cart hanya
+            dalam beberapa klik.
+          </p>
+        </div>
+        <div className="stat-grid">
+          <div className="stat-card">
+            <span className="card-icon-badge">
+              <AppIcon type="products" className="content-icon" />
+            </span>
+            <strong>{inventory.length}</strong>
+            <span>Produk tersedia</span>
+          </div>
+          <div className="stat-card">
+            <span className="card-icon-badge">
+              <AppIcon type="heart" className="content-icon" />
+            </span>
+            <strong>{wishlist.length}</strong>
+            <span>Wishlist item</span>
+          </div>
+          <div className="stat-card">
+            <span className="card-icon-badge">
+              <AppIcon type="cart" className="content-icon" />
+            </span>
+            <strong>{totalItems}</strong>
+            <span>Cart item</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="toolbar">
+        <label className="search-box">
+          <span className="icon-text">
+            <AppIcon type="search" className="content-icon soft" />
+            Search Product
+          </span>
+          <input
+            type="text"
+            placeholder="Search by product name..."
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+          />
+        </label>
+
+        <div className="filter-section">
+          <span className="filter-label icon-text">
+            <AppIcon type="grid" className="content-icon soft" />
+            Filter Category
+          </span>
+          <div className="filter-group">
+            {categories.map((category) => (
+              <button
+                key={category}
+                className={`filter-button ${activeCategory === category ? 'active' : ''}`}
+                onClick={() => setActiveCategory(category)}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="products-grid">
+        {filteredProducts.length > 0 ? (
+          filteredProducts.map((product) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              isWishlisted={wishlist.includes(product.id)}
+              onToggleWishlist={toggleWishlist}
+              onViewDetail={openProductDetail}
+              onAddToCart={addToCart}
+            />
+          ))
+        ) : (
+          <div className="empty-state">
+            <h3>No products found</h3>
+            <p>Try changing your search or category filter.</p>
+          </div>
+        )}
+      </section>
+    </main>
+  );
+
   const renderDetail = () => {
     if (!selectedProduct) {
-      return renderHome();
+      return isAdminUser ? renderHome() : renderProducts();
     }
 
     const isOutOfStock = selectedProduct.stock === 0;
@@ -1924,14 +2226,14 @@ function App() {
       </section>
 
       {isAdminUser ? (
-        <section className="profile-card profile-section-card">
+        <section className="profile-card profile-section-card admin-payment-list-section">
           <div className="section-header compact">
             <div>
               <span className="mini-badge">
                 <AppIcon type="payment" className="badge-icon" />
                 Payment List
               </span>
-              <h2>Metode pembayaran aktif</h2>
+              <h2>Daftar metode pembayaran aktif</h2>
             </div>
           </div>
 
@@ -2444,7 +2746,7 @@ function App() {
       case 'wishlist':
         return renderWishlist();
       case 'products':
-        return renderHome();
+        return renderProducts();
       case 'payments':
         return renderPayments();
       case 'cart':
