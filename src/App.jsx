@@ -2128,7 +2128,7 @@ function App() {
             />
           ))
         ) : (
-          <div className="empty-state">
+          <div className="empty-state compact-empty-state wishlist-empty-state">
             <h3>Your wishlist is empty</h3>
             <p>Tap the heart icon on a product card to save favorites.</p>
           </div>

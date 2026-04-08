@@ -2174,6 +2174,12 @@ img {
   text-align: left;
 }
 
+.wishlist-empty-state {
+  max-width: 420px;
+  justify-self: flex-start;
+  padding: 28px;
+}
+
 .empty-state h3 {
   margin: 0 0 10px;
   color: #173225;
