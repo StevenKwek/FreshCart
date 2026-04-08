@@ -800,6 +800,10 @@ function App() {
 
   const wishlistProducts = inventory.filter((product) => wishlist.includes(product.id));
   const adminProductList = [...inventory].sort((left, right) => left.id - right.id);
+  const isStartupSplashVisible =
+    useFirebase &&
+    (showStartupSplash || !isRemoteAuthReady) &&
+    !['login', 'register', 'forgot'].includes(currentView);
 
   const totalPrice = cartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
@@ -819,6 +823,25 @@ function App() {
   useLayoutEffect(() => {
     window.scrollTo(0, 0);
   }, [currentView]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return undefined;
+    }
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    if (isStartupSplashVisible) {
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [isStartupSplashVisible]);
 
   const toggleTheme = () => {
     setTheme((current) => (current === 'dark' ? 'light' : 'dark'));
@@ -3018,18 +3041,16 @@ function App() {
   };
 
   const renderCurrentPage = () => {
-    if (
-      useFirebase &&
-      (showStartupSplash || !isRemoteAuthReady) &&
-      !['login', 'register', 'forgot'].includes(currentView)
-    ) {
+    if (isStartupSplashVisible) {
       return (
         <main className="landing-page startup-splash">
           <section className="startup-splash-card">
-            <span className="startup-splash-mark">
-              <AppIcon type="cart" className="startup-splash-icon" />
-            </span>
-            <span className="mini-badge">FreshCart</span>
+            <div className="startup-splash-brand">
+              <span className="startup-splash-mark">
+                <AppIcon type="cart" className="startup-splash-icon" />
+              </span>
+              <span className="mini-badge">FreshCart</span>
+            </div>
             <h1>Menyiapkan session kamu</h1>
             <p>Mohon tunggu sebentar, kami sedang memulihkan akun dan data belanja kamu.</p>
             <div className="startup-splash-loader" aria-hidden="true">

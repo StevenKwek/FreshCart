@@ -2175,10 +2175,10 @@ img {
 }
 
 .wishlist-empty-state {
-  max-width: 760px;
+  max-width: 980px;
   width: 100%;
   justify-self: flex-start;
-  padding: 30px 34px;
+  padding: 30px 36px;
 }
 
 .wishlist-empty-shell {
@@ -2602,8 +2602,8 @@ body.theme-dark {
   display: grid;
   place-items: center;
   min-height: 100vh;
-  padding-top: 32px;
-  padding-bottom: 32px;
+  padding: 24px 0;
+  overflow: hidden;
 }
 
 .startup-splash-card {
@@ -2624,7 +2624,6 @@ body.theme-dark {
   justify-content: center;
   width: 72px;
   height: 72px;
-  margin-bottom: 18px;
   border-radius: 24px;
   background: linear-gradient(135deg, #1b8a49 0%, #53c47c 100%);
   color: #ffffff;
@@ -2636,8 +2635,16 @@ body.theme-dark {
   height: 28px;
 }
 
+.startup-splash-brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
 .startup-splash-card .mini-badge {
-  margin: 0 auto;
+  margin: 0;
 }
 
 .startup-splash-card h1 {
