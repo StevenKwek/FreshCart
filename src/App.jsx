@@ -5,6 +5,7 @@ import Footer from './components/Footer';
 import Navbar from './components/Navbar';
 import ProductCard from './components/ProductCard';
 import Toast from './components/Toast';
+import { checkoutWithMidtrans } from './services/midtrans';
 import {
   defaultPaymentMethods,
   normalizePaymentMethodsData,
@@ -1498,6 +1499,61 @@ function App() {
         showToast('Please login first before placing an order.', 'warning');
         placeOrderLockRef.current = false;
         setIsPlacingOrder(false);
+        return;
+      }
+
+      if (selectedPaymentMethod === 'midtrans-snap') {
+        try {
+          const orderId = `order-${Date.now()}`;
+          const grossAmount = cartItems.reduce(
+            (sum, item) => sum + item.price * item.quantity,
+            0,
+          );
+          const itemDetails = cartItems.map((item) => ({
+            id: String(item.id),
+            price: item.price,
+            quantity: item.quantity,
+            name: item.name,
+          }));
+
+          const { status } = await checkoutWithMidtrans({
+            firebaseUser: firebaseAuthUser,
+            orderId,
+            grossAmount,
+            customerDetails: {
+              first_name: username,
+              email: firebaseAuthUser.email || '',
+            },
+            itemDetails,
+          });
+
+          if (status === 'closed') {
+            showToast('Pembayaran dibatalkan.', 'warning');
+            return;
+          }
+
+          await checkoutWithFirebaseApi({
+            firebaseUser: firebaseAuthUser,
+            cart,
+            selectedPaymentMethod,
+          });
+
+          navigateTo('home');
+          showToast(
+            status === 'success'
+              ? 'Pembayaran berhasil! Pesanan kamu sedang diproses.'
+              : 'Pembayaran pending. Pesanan akan diproses setelah konfirmasi.',
+          );
+        } catch (error) {
+          showToast(
+            error instanceof Error ? error.message : 'Pembayaran gagal. Silakan coba lagi.',
+            'warning',
+          );
+        } finally {
+          placeOrderLockRef.current = false;
+          setIsPlacingOrder(false);
+        }
+
         return;
       }
 
