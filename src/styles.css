@@ -23,7 +23,8 @@ html {
   background:
     radial-gradient(circle at top left, rgba(121, 198, 146, 0.22), transparent 28%),
     linear-gradient(180deg, #f7fbf7 0%, #eff5ef 100%);
-  overscroll-behavior-y: none;
+  overscroll-behavior: none;
+  overflow-x: hidden;
 }
 
 body {
@@ -33,7 +34,8 @@ body {
   background:
     radial-gradient(circle at top left, rgba(121, 198, 146, 0.22), transparent 28%),
     linear-gradient(180deg, #f7fbf7 0%, #eff5ef 100%);
-  overscroll-behavior-y: none;
+  overscroll-behavior: none;
+  overflow-x: hidden;
 }
 
 button,
@@ -54,12 +56,13 @@ img {
 #root {
   min-height: 100vh;
   background: inherit;
+  overflow-x: hidden;
 }
 
 .app-shell {
   position: relative;
   min-height: 100vh;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 .theme-toggle {
@@ -2745,7 +2748,7 @@ body.theme-dark {
   display: grid;
   place-items: center;
   min-height: 100vh;
-  padding: 24px 0;
+  padding: 24px 20px;
   overflow: hidden;
 }
 
