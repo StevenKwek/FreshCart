@@ -205,7 +205,7 @@ const getOrderStatusMeta = (status) => {
 
 const canUserCancelOrderStatus = (status) => {
   const normalizedStatus = normalizeOrderStatusValue(status);
-  return normalizedStatus === 'pending' || normalizedStatus === 'accepted';
+  return normalizedStatus === 'pending';
 };
 const getOrderStatusValue = (order) =>
   normalizeOrderStatusValue(order?.status);

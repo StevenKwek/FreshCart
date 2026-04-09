@@ -71,7 +71,7 @@ const normalizeOrderStatus = (status) =>
     : 'pending';
 
 const canUserCancelStatus = (status) =>
-  status === 'pending' || status === 'accepted';
+  status === 'pending';
 
 const collectUserPurchaseOrders = async (adminDb) => {
   const usersSnapshot = await adminDb.collection('users').get();
