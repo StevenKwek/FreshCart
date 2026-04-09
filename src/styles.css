@@ -3020,7 +3020,11 @@ body.theme-dark {
   }
 
   .why-us-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .admin-shortcut-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -3144,7 +3148,7 @@ body.theme-dark {
   }
 
   .products-grid {
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .product-image-wrap {
@@ -3199,17 +3203,14 @@ body.theme-dark {
   }
 
   .stat-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .profile-stat-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .admin-shortcut-grid,
-  .admin-product-form-grid,
-  .analytics-summary-grid,
-  .analytics-stat-grid {
+  .admin-product-form-grid {
     grid-template-columns: 1fr;
   }
 
@@ -3481,6 +3482,21 @@ body.theme-dark {
     padding: 18px;
   }
 
+  .why-us-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-grid,
+  .profile-stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-shortcut-grid,
+  .analytics-summary-grid,
+  .analytics-stat-grid {
+    grid-template-columns: 1fr;
+  }
+
   .analytics-control-row {
     align-items: flex-start;
   }
@@ -3528,5 +3544,119 @@ body.theme-dark {
     right: 8px;
     top: calc(env(safe-area-inset-top, 0px) + 8px);
     max-width: calc(100% - 16px);
+  }
+}
+
+/* Very small phones (≤ 390px, e.g. iPhone SE, Galaxy S8) */
+@media (max-width: 390px) {
+  :root {
+    --page-gutter: 6px;
+  }
+
+  .hero-copy h1,
+  .auth-highlight h1 {
+    font-size: 1.85rem;
+  }
+
+  .why-us-card h3 {
+    font-size: 1.3rem;
+  }
+
+  .products-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .wishlist-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-order-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .primary-button,
+  .secondary-button,
+  .ghost-button,
+  .filter-button {
+    padding: 11px 14px;
+  }
+
+  .summary-card,
+  .order-card,
+  .detail-card {
+    padding: 14px;
+  }
+
+  .stat-card strong,
+  .detail-meta-card strong {
+    font-size: 1.35rem;
+  }
+}
+
+/* Landscape phones — keep layouts usable in wide-short viewports */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 900px) {
+  .hero-panel,
+  .auth-shell {
+    grid-template-columns: 1.1fr 0.9fr;
+    min-height: auto;
+    padding-top: 16px;
+    padding-bottom: 24px;
+    gap: 16px;
+  }
+
+  .hero-copy,
+  .auth-highlight {
+    padding: 22px;
+  }
+
+  .hero-copy h1,
+  .auth-highlight h1 {
+    font-size: 2rem;
+  }
+
+  .why-us-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .navbar {
+    padding-top: 14px;
+  }
+
+  .landing-page,
+  .page-shell {
+    padding-top: 14px;
+    padding-bottom: 24px;
+  }
+
+  .home-banner {
+    margin-top: 16px;
+  }
+
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .why-us-section {
+    margin-top: 24px;
+    margin-bottom: 24px;
+  }
+}
+
+/* Safe-area inset support for notched/pill phones */
+@supports (padding: env(safe-area-inset-top)) {
+  .navbar {
+    padding-left: max(var(--page-gutter), env(safe-area-inset-left));
+    padding-right: max(var(--page-gutter), env(safe-area-inset-right));
+  }
+
+  .landing-page,
+  .page-shell,
+  .app-footer {
+    padding-left: max(var(--page-gutter), env(safe-area-inset-left));
+    padding-right: max(var(--page-gutter), env(safe-area-inset-right));
+  }
+
+  .mobile-menu {
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
   }
 }
