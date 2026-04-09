@@ -512,7 +512,7 @@ img {
 
 .feature-tile .icon-text,
 .benefit-card .icon-text {
-  gap: 16px;
+  gap: 22px;
   align-items: center;
   justify-content: flex-start;
   width: 100%;
