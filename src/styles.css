@@ -212,6 +212,8 @@ img {
 .benefit-card span,
 .feature-tile span {
   color: #5e7165;
+  line-height: 1.55;
+  font-size: 0.95rem;
 }
 
 .hero-actions,
@@ -495,9 +497,9 @@ img {
 .detail-meta-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   border-radius: 22px;
-  padding: 18px;
+  padding: 22px;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(147, 173, 151, 0.18);
 }
@@ -510,18 +512,18 @@ img {
 
 .feature-tile .icon-text,
 .benefit-card .icon-text {
-  gap: 14px;
+  gap: 16px;
   align-items: center;
   justify-content: flex-start;
   width: 100%;
-  padding-left: 4px;
 }
 
 .feature-tile .content-icon.soft,
 .benefit-card .content-icon.soft {
-  width: 30px;
-  height: 30px;
-  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  flex-shrink: 0;
   margin-left: 0;
 }
 
