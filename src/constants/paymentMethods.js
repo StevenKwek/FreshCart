@@ -49,16 +49,6 @@ export const defaultPaymentMethods = [
       },
     ],
   },
-  {
-    group: 'Online Payment',
-    options: [
-      {
-        id: 'midtrans-snap',
-        label: 'Midtrans',
-        note: 'Bayar via kartu kredit, transfer bank, atau e-wallet lewat Midtrans',
-      },
-    ],
-  },
 ];
 
 const normalizeMethodOption = (option) => {
