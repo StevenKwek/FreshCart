@@ -293,6 +293,7 @@ function App() {
   const [hoveredChartIndex, setHoveredChartIndex] = useState(null);
   const [theme, setTheme] = useState(getInitialTheme);
   const [selectedProductId, setSelectedProductId] = useState(null);
+  const [detailQty, setDetailQty] = useState(1);
   const [previousView, setPreviousView] = useState('home');
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
@@ -1409,7 +1410,7 @@ function App() {
     });
   };
 
-  const addToCart = (productId) => {
+  const addToCart = (productId, qty = 1) => {
     const product = inventory.find((item) => item.id === productId);
 
     if (!product || product.stock === 0) {
@@ -1420,23 +1421,25 @@ function App() {
     setCart((current) => {
       const existing = current.find((item) => item.productId === productId);
       const currentQty = existing?.quantity || 0;
+      const nextQty = currentQty + qty;
 
       if (currentQty >= product.stock) {
         showToast('Stock limit reached for this product.', 'warning');
         return current;
       }
 
+      const clampedQty = Math.min(nextQty, product.stock);
       showToast(`${product.name} added to cart.`);
 
       if (existing) {
         return current.map((item) =>
           item.productId === productId
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: clampedQty }
             : item,
         );
       }
 
-      return [...current, { productId, quantity: 1 }];
+      return [...current, { productId, quantity: clampedQty }];
     });
   };
 
@@ -1576,6 +1579,7 @@ function App() {
   const openProductDetail = (product) => {
     setPreviousView(currentView === 'detail' ? 'home' : currentView);
     setSelectedProductId(product.id);
+    setDetailQty(1);
     navigateTo('detail');
   };
 
@@ -2122,13 +2126,36 @@ function App() {
               </div>
             </div>
 
+            {!isOutOfStock && (
+              <div className="quantity-controls">
+                <button
+                  onClick={() => setDetailQty((q) => Math.max(1, q - 1))}
+                  disabled={detailQty <= 1}
+                >
+                  −
+                </button>
+                <span style={{ minWidth: '2ch', textAlign: 'center', fontWeight: 700 }}>
+                  {detailQty}
+                </span>
+                <button
+                  onClick={() => setDetailQty((q) => Math.min(selectedProduct.stock, q + 1))}
+                  disabled={detailQty >= selectedProduct.stock}
+                >
+                  +
+                </button>
+              </div>
+            )}
+
             <div className="detail-actions">
               <button
                 className="primary-button large"
-                onClick={() => addToCart(selectedProduct.id)}
+                onClick={() => {
+                  addToCart(selectedProduct.id, detailQty);
+                  setDetailQty(1);
+                }}
                 disabled={isOutOfStock}
               >
-                Add to Cart
+                {isOutOfStock ? 'Out of Stock' : `Add ${detailQty > 1 ? `${detailQty} ` : ''}to Cart`}
               </button>
               <button
                 className={`secondary-button large ${wishlist.includes(selectedProduct.id) ? 'liked' : ''}`}
