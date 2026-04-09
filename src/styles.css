@@ -26,7 +26,6 @@ html {
     radial-gradient(circle at top left, rgba(121, 198, 146, 0.22), transparent 28%),
     linear-gradient(180deg, #f7fbf7 0%, #eff5ef 100%);
   overscroll-behavior: none;
-  overflow-x: hidden;
 }
 
 body {
@@ -38,7 +37,6 @@ body {
     radial-gradient(circle at top left, rgba(121, 198, 146, 0.22), transparent 28%),
     linear-gradient(180deg, #f7fbf7 0%, #eff5ef 100%);
   overscroll-behavior: none;
-  overflow-x: hidden;
 }
 
 button,
