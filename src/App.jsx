@@ -1880,6 +1880,12 @@ function App() {
                     style={{
                       left: `${(hoveredChartPoint.x / chartWidth) * 100}%`,
                       top: `${(hoveredChartPoint.y / chartHeight) * 100}%`,
+                      transform: `translate(${
+                        hoveredChartPoint.x / chartWidth < 0.15 ? '0%' :
+                        hoveredChartPoint.x / chartWidth > 0.85 ? '-100%' : '-50%'
+                      }, ${
+                        hoveredChartPoint.y / chartHeight < 0.28 ? '14px' : 'calc(-100% - 16px)'
+                      })`,
                     }}
                   >
                     <span>{chartSelectedPointLabel}</span>
@@ -1970,7 +1976,7 @@ function App() {
 
                 <div className="pivot-chart-caption">
                   <strong>Bulan</strong>
-                  <span>Gunakan panah kiri-kanan untuk mengganti tahun pada pivot chart.</span>
+                  <span>Sentuh grafik untuk melihat detail per bulan.</span>
                 </div>
               </div>
             </div>

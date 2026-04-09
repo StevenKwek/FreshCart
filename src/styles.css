@@ -1718,56 +1718,71 @@ img {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
 .pivot-chart-header h2 {
-  margin: 12px 0 0;
+  margin: 10px 0 0;
   color: #163728;
 }
 
 .pivot-chart-copy {
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   color: #68806e;
 }
 
 .pivot-year-switcher {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(93, 126, 102, 0.18);
+  border-radius: 20px;
+  padding: 5px;
+  box-shadow: 0 2px 8px rgba(24, 54, 35, 0.06);
+  flex-shrink: 0;
 }
 
 .pivot-year-switcher .secondary-button {
-  min-width: 48px;
-  min-height: 48px;
+  min-width: 38px;
+  min-height: 38px;
   padding: 0;
-  border-radius: 16px;
+  border-radius: 14px;
+  font-size: 1rem;
+  line-height: 1;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(93, 126, 102, 0.12);
 }
 
 .pivot-year-switcher strong {
-  min-width: 66px;
+  min-width: 58px;
   text-align: center;
   color: #163728;
+  font-size: 0.97rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .pivot-section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
   color: #68806e;
+  font-size: 0.88rem;
 }
 
 .pivot-section-header strong {
   color: #163728;
+  font-size: 0.95rem;
 }
 
 .pivot-chart-card {
   display: grid;
-  gap: 16px;
-  padding: 22px;
+  gap: 14px;
+  padding: 20px;
   border-radius: 28px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(243, 248, 243, 0.92));
@@ -1778,7 +1793,7 @@ img {
 .pivot-line-chart-shell {
   position: relative;
   display: grid;
-  gap: 12px;
+  gap: 10px;
   padding-top: 48px;
 }
 
@@ -1843,42 +1858,47 @@ img {
 .pivot-chart-xlabels {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 6px;
+  gap: 4px;
   color: #68806e;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
 }
 
 .pivot-chart-xlabels span {
   text-align: center;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: clip;
 }
 
 .pivot-chart-caption {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
   color: #68806e;
-  font-size: 0.88rem;
+  font-size: 0.82rem;
+  padding-top: 2px;
 }
 
 .pivot-chart-caption strong {
   color: #163728;
+  font-size: 0.85rem;
 }
 
 .pivot-chart-tooltip {
   position: absolute;
   z-index: 2;
-  min-width: 120px;
-  max-width: 160px;
-  padding: 12px 14px;
+  min-width: 130px;
+  max-width: 170px;
+  padding: 11px 14px;
   border-radius: 18px;
   border: 1px solid rgba(147, 173, 151, 0.18);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 18px 38px rgba(15, 34, 23, 0.12);
-  transform: translate(-50%, calc(-100% - 18px));
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 12px 32px rgba(15, 34, 23, 0.13);
+  backdrop-filter: blur(12px);
   pointer-events: none;
+  white-space: nowrap;
 }
 
 .pivot-chart-tooltip span {
@@ -2640,9 +2660,21 @@ body.theme-dark {
   box-shadow: 0 20px 45px rgba(0, 0, 0, 0.22);
 }
 
+.app-shell.dark-theme .pivot-year-switcher {
+  background: rgba(21, 31, 26, 0.7);
+  border-color: rgba(117, 153, 130, 0.2);
+}
+
+.app-shell.dark-theme .pivot-year-switcher .secondary-button {
+  background: rgba(30, 46, 37, 0.9);
+  border-color: rgba(117, 153, 130, 0.15);
+  color: #86d1a1;
+}
+
 .app-shell.dark-theme .pivot-chart-tooltip {
-  background: rgba(13, 20, 15, 0.96);
+  background: rgba(13, 20, 15, 0.97);
   border-color: rgba(117, 153, 130, 0.18);
+  backdrop-filter: blur(12px);
   box-shadow: 0 22px 44px rgba(0, 0, 0, 0.34);
 }
 
@@ -3277,12 +3309,22 @@ body.theme-dark {
     border-radius: 24px;
   }
 
+  .pivot-chart-card {
+    padding: 16px;
+    border-radius: 22px;
+  }
+
   .pivot-line-chart-shell {
-    padding-top: 56px;
+    padding-top: 52px;
   }
 
   .pivot-chart-xlabels {
-    font-size: 0.72rem;
+    font-size: 0.7rem;
+  }
+
+  .pivot-year-switcher .secondary-button {
+    min-width: 36px;
+    min-height: 36px;
   }
 
   .cart-item img {
@@ -3508,8 +3550,39 @@ body.theme-dark {
     align-items: flex-start;
   }
 
-  .pivot-chart-caption {
+  .pivot-chart-card {
+    padding: 14px 12px;
+    border-radius: 20px;
+    gap: 12px;
+  }
+
+  .pivot-line-chart-shell {
+    padding-top: 48px;
+  }
+
+  .pivot-chart-xlabels {
+    font-size: 0.65rem;
+    gap: 2px;
+  }
+
+  .pivot-section-header {
+    flex-direction: column;
     align-items: flex-start;
+    gap: 2px;
+  }
+
+  .pivot-chart-caption {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .pivot-year-switcher {
+    align-self: flex-end;
+  }
+
+  .pivot-chart-header {
+    align-items: center;
   }
 
   .profile-avatar {
