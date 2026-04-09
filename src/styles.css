@@ -2,7 +2,8 @@
   --page-gutter: 16px;
   font-family: 'DM Sans', sans-serif;
   color: #173225;
-  background:
+  background-color: #eff5ef;
+  background-image:
     radial-gradient(circle at top left, rgba(121, 198, 146, 0.22), transparent 28%),
     linear-gradient(180deg, #f7fbf7 0%, #eff5ef 100%);
   line-height: 1.5;
@@ -20,7 +21,8 @@
 
 html {
   scroll-behavior: smooth;
-  background:
+  background-color: #eff5ef;
+  background-image:
     radial-gradient(circle at top left, rgba(121, 198, 146, 0.22), transparent 28%),
     linear-gradient(180deg, #f7fbf7 0%, #eff5ef 100%);
   overscroll-behavior: none;
@@ -31,7 +33,8 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background:
+  background-color: #eff5ef;
+  background-image:
     radial-gradient(circle at top left, rgba(121, 198, 146, 0.22), transparent 28%),
     linear-gradient(180deg, #f7fbf7 0%, #eff5ef 100%);
   overscroll-behavior: none;
@@ -2379,7 +2382,8 @@ img {
 
 html.theme-dark,
 body.theme-dark {
-  background:
+  background-color: #141f19;
+  background-image:
     radial-gradient(circle at top left, rgba(68, 122, 88, 0.28), transparent 28%),
     linear-gradient(180deg, #0f1713 0%, #141f19 100%);
 }
